@@ -342,39 +342,7 @@ function boot() {
     principleGuide.show();
   }
 
-  // Expose diagnostic & demo-capture hooks
-  globalThis.__BEYOND3D__ = {
-    state,
-    hints,
-    input,
-    scene,
-    sanctuary3D,
-    principleGuide,
-    grabStage,
-    hud,
-    voice,
-    actions: {
-      grab: () => {
-        const r = state.setGrabbed(true);
-        if (r.grabbed) input.setGrabbed(true);
-        return r;
-      },
-      release: releaseGrabCleanly,
-      toggleTab: handleToggleHonestView,
-      requestHint: handleRequestHint,
-      reset: handleReset,
-      dismissGuide: () => principleGuide.hide(),
-      showGuide: () => principleGuide.show(),
-    },
-  };
-
-  // 8. Main 60 FPS Render & Simulation Loop
-  let lastTime = performance.now();
-  engine.runRenderLoop(() => {
-    const now = performance.now();
-    const dtSec = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
-    lastTime = now;
-
+  const stepFrame = (dtSec = 1 / 24) => {
     if (!paused && !guideOpen) {
       const move = input.sampleMoveVector(dtSec);
       if (state.grabbed) {
@@ -434,6 +402,43 @@ function boot() {
     consolePanel.render(state);
     hud.sync(state, hints.getSnapshot());
     scene.render();
+  };
+
+  // Expose diagnostic & deterministic demo-capture hooks
+  globalThis.__BEYOND3D__ = {
+    engine,
+    state,
+    hints,
+    input,
+    scene,
+    sanctuary3D,
+    principleGuide,
+    grabStage,
+    hud,
+    voice,
+    stepFrame,
+    actions: {
+      grab: () => {
+        const r = state.setGrabbed(true);
+        if (r.grabbed) input.setGrabbed(true);
+        return r;
+      },
+      release: releaseGrabCleanly,
+      toggleTab: handleToggleHonestView,
+      requestHint: handleRequestHint,
+      reset: handleReset,
+      dismissGuide: () => principleGuide.hide(),
+      showGuide: () => principleGuide.show(),
+    },
+  };
+
+  // 8. Main 60 FPS Render & Simulation Loop
+  let lastTime = performance.now();
+  engine.runRenderLoop(() => {
+    const now = performance.now();
+    const dtSec = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+    lastTime = now;
+    stepFrame(dtSec);
   });
 
   window.addEventListener('resize', () => {
