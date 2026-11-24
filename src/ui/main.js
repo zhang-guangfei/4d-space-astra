@@ -56,7 +56,7 @@ function boot() {
   });
 
   // 4. 3D Sanctuary Landmark + Grab Stage + Tactical Console
-  const sanctuary3D = new Level14SanctuaryScene(scene);
+  const sanctuary3D = new Level14SanctuaryScene(scene, camera);
   const grabStage = new GrabStageController(
     document.getElementById('side-view-canvas'),
     document.getElementById('side-view-panel')
