@@ -1,14 +1,18 @@
 /**
- * Beyond 3D — Unified D8 Input Controller
+ * Beyond 3D — Unified D8 Input Controller (Pointer Events + Pointer Lock)
+ *
+ * Uses Pointer Events (`pointerdown` / `pointermove` / `pointerup`) instead of legacy
+ * `mousedown` / `mousemove` so Babylon.js v9's canvas pointer handling in Chrome & Edge
+ * never suppresses mouse-look or 3D drag rotation.
  *
  * Strict D8 Mapping:
  * - Walk Mode:
- *   * Mouse Move (Pointer Lock OR Left-Drag fallback) = First-person 360° look
+ *   * Pointer Move (Pointer Lock after clicking canvas, OR Left/Right-Drag immediately) = 360° FPS look
  *   * WASD (+ Shift sprint) = Walk on XZ plane
  *   * Mouse Wheel = Sole 4D control: translate smoothly along W axis
  *   * E = Grab nearby 4D object (enter Third-Person Grab Stage)
  * - Grab Stage Mode:
- *   * Mouse Left-Drag = Pure 3D SO(3) rotation of grabbed object
+ *   * Left-Drag = Pure 3D SO(3) rotation of grabbed object
  *   * Mouse Wheel = Sole 4D control: 4D rigid rotation around preset plane (XW around YZ)
  *   * W / S = Push / pull object along track (e.g. through Level 14 hairline slit)
  *   * E = Release object back to Walk Mode
@@ -32,12 +36,14 @@ export class InputController {
     this.grabbed = false;
     this.pointerLocked = false;
     this.dragging = false;
+    this.activePointerId = null;
+    this.dragMovedPx = 0;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
 
     this.yaw = -0.20; // Diagonal hero framing of Passing Orb + Twin Monolith Hairline Slit
     this.pitch = 0.03;
-    this.mouseSensitivity = 0.0024;
+    this.mouseSensitivity = 0.0028;
     this.wheelSensitivity = 1.0;
 
     this._bindEvents();
@@ -48,6 +54,7 @@ export class InputController {
     if (this.paused) {
       this.keys.clear();
       this.dragging = false;
+      this.activePointerId = null;
       this.releasePointerLock();
     }
   }
@@ -74,7 +81,7 @@ export class InputController {
           res.catch(() => {});
         }
       } catch {
-        // Gracefully fall back to drag-look if embedded iframe restricts pointer lock
+        // Gracefully fall back to drag-look if browser/iframe restricts pointer lock
       }
     }
   }
@@ -95,25 +102,50 @@ export class InputController {
       this.cb.onPointerLockChange?.(this.pointerLocked);
     };
 
-    this._onMouseDown = (e) => {
+    this._onPointerDown = (e) => {
       if (this.paused) return;
       this.cb.onUserGesture?.();
-      if (e.button === 0) {
+      // Support Left (0) or Right (2) mouse button drag for effortless camera look / SO(3) rotation
+      if (e.button === 0 || e.button === 2) {
         this.dragging = true;
+        this.activePointerId = e.pointerId;
+        this.dragMovedPx = 0;
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
-        // In walk mode, clicking canvas also attempts pointer lock for FPS immersion
-        if (!this.grabbed && !this.pointerLocked) {
-          this.requestPointerLock();
+        if (!this.pointerLocked && typeof this.canvas.setPointerCapture === 'function') {
+          try {
+            this.canvas.setPointerCapture(e.pointerId);
+          } catch {
+            // ignore
+          }
         }
       }
     };
 
-    this._onMouseUp = () => {
+    this._onPointerUp = (e) => {
+      const wasClick = this.dragging && this.dragMovedPx < 5 && e.button === 0;
+      if (
+        this.activePointerId !== null &&
+        typeof this.canvas.releasePointerCapture === 'function'
+      ) {
+        try {
+          if (this.canvas.hasPointerCapture?.(this.activePointerId)) {
+            this.canvas.releasePointerCapture(this.activePointerId);
+          }
+        } catch {
+          // ignore
+        }
+      }
       this.dragging = false;
+      this.activePointerId = null;
+
+      // Single clean click (without dragging) in Walk Mode locks pointer for effortless FPS look
+      if (wasClick && !this.grabbed && !this.paused && !this.pointerLocked) {
+        this.requestPointerLock();
+      }
     };
 
-    this._onMouseMove = (e) => {
+    this._onPointerMove = (e) => {
       if (this.paused) return;
 
       let dx = 0;
@@ -126,12 +158,13 @@ export class InputController {
         dy = e.clientY - this.lastMouseY;
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
+        this.dragMovedPx += Math.hypot(dx, dy);
       } else {
         return;
       }
 
       if (this.grabbed) {
-        // Left-drag rotates the grabbed object in pure 3D SO(3)
+        // Drag rotates the grabbed object in pure 3D SO(3)
         const rotYaw = -dx * 0.0085 * this.wheelSensitivity;
         const rotPitch = -dy * 0.0085 * this.wheelSensitivity;
         this.cb.onGrabDrag3D?.(rotYaw, rotPitch);
@@ -139,6 +172,10 @@ export class InputController {
         this.yaw += dx * this.mouseSensitivity;
         this.pitch = clamp(this.pitch - dy * this.mouseSensitivity, -1.25, 1.25);
       }
+    };
+
+    this._onContextMenu = (e) => {
+      e.preventDefault();
     };
 
     this._onWheel = (e) => {
@@ -214,12 +251,15 @@ export class InputController {
     this._onBlur = () => {
       this.keys.clear();
       this.dragging = false;
+      this.activePointerId = null;
     };
 
     document.addEventListener('pointerlockchange', this._onPointerLockChange);
-    this.canvas.addEventListener('mousedown', this._onMouseDown);
-    window.addEventListener('mouseup', this._onMouseUp);
-    window.addEventListener('mousemove', this._onMouseMove);
+    this.canvas.addEventListener('pointerdown', this._onPointerDown);
+    window.addEventListener('pointerup', this._onPointerUp);
+    window.addEventListener('pointercancel', this._onPointerUp);
+    window.addEventListener('pointermove', this._onPointerMove);
+    this.canvas.addEventListener('contextmenu', this._onContextMenu);
     this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
@@ -245,9 +285,11 @@ export class InputController {
 
   dispose() {
     document.removeEventListener('pointerlockchange', this._onPointerLockChange);
-    this.canvas.removeEventListener('mousedown', this._onMouseDown);
-    window.removeEventListener('mouseup', this._onMouseUp);
-    window.removeEventListener('mousemove', this._onMouseMove);
+    this.canvas.removeEventListener('pointerdown', this._onPointerDown);
+    window.removeEventListener('pointerup', this._onPointerUp);
+    window.removeEventListener('pointercancel', this._onPointerUp);
+    window.removeEventListener('pointermove', this._onPointerMove);
+    this.canvas.removeEventListener('contextmenu', this._onContextMenu);
     this.canvas.removeEventListener('wheel', this._onWheel);
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
