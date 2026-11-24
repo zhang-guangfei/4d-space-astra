@@ -1,11 +1,15 @@
 /**
- * Beyond 3D — Dual-Character Voice Engine (D12)
- * Supports:
- * - 'linxia' (先遣员 · 林夏 07 号): warm, clear female timbre + subtle crystalline comm chirp
- * - 'tomb'   (遗迹 AI · 「墓地」): deep ancient metallic resonance (196Hz -> 147Hz dual triangle-wave
- *            metallic shimmer with algorithmic reverb tail + 0.84x pitch-shifted speech synthesis)
+ * Beyond 3D — Enhanced Dual-Character Voice Engine (D12)
  *
- * Always emits clean subtitle callbacks even when audio is muted or SpeechSynthesis is absent.
+ * Improvements:
+ * - Async `voiceschanged` preloading with priority ranking for Natural/Neural/Online zh-CN voices
+ *   (Microsoft Xiaoxiao/Yunxi/Yunjian Natural in Edge, Google 普通话 in Chrome).
+ * - First-gesture speech queue: Chrome/Edge block audio/TTS before first user gesture, so the
+ *   opening line is queued and fires cleanly on the player's very first click/key/wheel!
+ * - Richer acoustic signatures:
+ *   * Tomb (遗迹 AI「墓地」): 196Hz -> 147Hz dual-triangle metallic resonance + 98Hz sub-bass swell
+ *     + cathedral convolver reverb tail + 0.84x lowered pitch.
+ *   * Lin Xia (07 号): warm crystalline 3-note comm-link chime.
  */
 
 export const SPEAKERS = Object.freeze({
@@ -14,8 +18,8 @@ export const SPEAKERS = Object.freeze({
     displayName: '林夏 · 07 号',
     roleTag: '先遣领航员',
     color: '#4DE6D3',
-    pitch: 1.08,
-    rate: 1.02,
+    pitch: 1.06,
+    rate: 1.0,
   },
   tomb: {
     id: 'tomb',
@@ -23,7 +27,7 @@ export const SPEAKERS = Object.freeze({
     roleTag: '高维方舟意识',
     color: '#F7C346',
     pitch: 0.84, // D12 exact 0.84x lowered pitch
-    rate: 0.86,
+    rate: 0.88,
   },
 });
 
@@ -34,6 +38,41 @@ export class CharacterVoiceEngine {
     this.audioCtx = null;
     this.reverbBuffer = null;
     this.subtitleTimer = null;
+    this.userUnlocked = false;
+    this.pendingSpeech = null;
+    this.cachedVoices = [];
+
+    this._initVoices();
+  }
+
+  _initVoices() {
+    const synth = globalThis.speechSynthesis;
+    if (!synth || typeof synth.getVoices !== 'function') return;
+    const refresh = () => {
+      try {
+        const list = synth.getVoices() || [];
+        if (list.length > 0) this.cachedVoices = list;
+      } catch {
+        // ignore
+      }
+    };
+    refresh();
+    if (typeof synth.addEventListener === 'function') {
+      synth.addEventListener('voiceschanged', refresh);
+    }
+  }
+
+  /**
+   * Call on the player's first mouse/key/wheel gesture to unlock Web Audio & flush queued opening voice.
+   */
+  unlockOnGesture() {
+    this.userUnlocked = true;
+    this._ensureAudio();
+    if (this.pendingSpeech && this.enabled) {
+      const { speakerId, text } = this.pendingSpeech;
+      this.pendingSpeech = null;
+      this._playAudioAndSpeech(speakerId, text);
+    }
   }
 
   _ensureAudio() {
@@ -47,7 +86,7 @@ export class CharacterVoiceEngine {
     if (!AudioCtx) return false;
     try {
       this.audioCtx = new AudioCtx();
-      this.reverbBuffer = this._createCathedralImpulse(this.audioCtx, 1.8, 2.6);
+      this.reverbBuffer = this._createCathedralImpulse(this.audioCtx, 2.4, 2.3);
       return true;
     } catch {
       return false;
@@ -70,17 +109,20 @@ export class CharacterVoiceEngine {
 
   setEnabled(enabled) {
     this.enabled = Boolean(enabled);
-    if (!this.enabled && globalThis.speechSynthesis) {
-      try {
-        globalThis.speechSynthesis.cancel();
-      } catch {
-        // ignore
+    if (!this.enabled) {
+      this.pendingSpeech = null;
+      if (globalThis.speechSynthesis) {
+        try {
+          globalThis.speechSynthesis.cancel();
+        } catch {
+          // ignore
+        }
       }
     }
   }
 
   /**
-   * Play Tomb's signature 196Hz -> 147Hz dual triangle-wave metallic resonance cue with reverb (D12).
+   * Tomb's cathedral metallic resonance: 196Hz -> 147Hz dual triangle + 98Hz sub-harmonic + reverb tail.
    */
   _playTombMetallicResonance() {
     if (!this.enabled || !this._ensureAudio()) return;
@@ -90,37 +132,49 @@ export class CharacterVoiceEngine {
 
       const oscA = ctx.createOscillator();
       const oscB = ctx.createOscillator();
+      const subOsc = ctx.createOscillator();
+      const metalOsc = ctx.createOscillator();
+
       oscA.type = 'triangle';
       oscB.type = 'triangle';
-
-      // Exact G3 (196 Hz) -> D3 (147 Hz) descending dual-triangle resonance with slight metallic detune
-      oscA.frequency.setValueAtTime(196.0, now);
-      oscA.frequency.exponentialRampToValueAtTime(147.0, now + 0.55);
-
-      oscB.frequency.setValueAtTime(196.0 * 1.007, now);
-      oscB.frequency.exponentialRampToValueAtTime(147.0 * 0.993, now + 0.55);
-
-      // Metallic harmonic overtone ring
-      const metalOsc = ctx.createOscillator();
+      subOsc.type = 'sine';
       metalOsc.type = 'sine';
+
+      // G3 (196 Hz) -> D3 (147 Hz) dual-triangle resonance with slight metallic detune
+      oscA.frequency.setValueAtTime(196.0, now);
+      oscA.frequency.exponentialRampToValueAtTime(147.0, now + 0.65);
+
+      oscB.frequency.setValueAtTime(196.0 * 1.008, now);
+      oscB.frequency.exponentialRampToValueAtTime(147.0 * 0.992, now + 0.65);
+
+      // Deep sub-octave cathedral foundation (98Hz -> 73.4Hz)
+      subOsc.frequency.setValueAtTime(98.0, now);
+      subOsc.frequency.exponentialRampToValueAtTime(73.42, now + 0.85);
+
+      // Ancient bronze harmonic ring
       metalOsc.frequency.setValueAtTime(588.0, now);
-      metalOsc.frequency.exponentialRampToValueAtTime(441.0, now + 0.45);
+      metalOsc.frequency.exponentialRampToValueAtTime(441.0, now + 0.55);
+
+      const subGain = ctx.createGain();
+      subGain.gain.value = 0.45;
       const metalGain = ctx.createGain();
-      metalGain.gain.value = 0.08;
+      metalGain.gain.value = 0.1;
 
       const dryGain = ctx.createGain();
       dryGain.gain.setValueAtTime(0.001, now);
-      dryGain.gain.exponentialRampToValueAtTime(0.16, now + 0.04);
-      dryGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.85);
+      dryGain.gain.exponentialRampToValueAtTime(0.18, now + 0.05);
+      dryGain.gain.exponentialRampToValueAtTime(0.0008, now + 1.15);
 
       const wetGain = ctx.createGain();
-      wetGain.gain.value = 0.42;
+      wetGain.gain.value = 0.58;
 
       const convolver = ctx.createConvolver();
       convolver.buffer = this.reverbBuffer;
 
       oscA.connect(dryGain);
       oscB.connect(dryGain);
+      subOsc.connect(subGain);
+      subGain.connect(dryGain);
       metalOsc.connect(metalGain);
       metalGain.connect(dryGain);
 
@@ -131,63 +185,99 @@ export class CharacterVoiceEngine {
 
       oscA.start(now);
       oscB.start(now);
+      subOsc.start(now);
       metalOsc.start(now);
-      oscA.stop(now + 0.9);
-      oscB.stop(now + 0.9);
-      metalOsc.stop(now + 0.9);
+      oscA.stop(now + 1.25);
+      oscB.stop(now + 1.25);
+      subOsc.stop(now + 1.25);
+      metalOsc.stop(now + 1.25);
     } catch {
       // Ignore audio errors
     }
   }
 
-  /**
-   * Play Lin Xia's warm comm-link crystalline chirp cue.
-   */
   _playLinXiaChirp() {
     if (!this.enabled || !this._ensureAudio()) return;
     try {
       const ctx = this.audioCtx;
       const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, now);
-      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.12);
-      gain.gain.setValueAtTime(0.001, now);
-      gain.gain.exponentialRampToValueAtTime(0.11, now + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.18);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.2);
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        const t0 = now + i * 0.055;
+        gain.gain.setValueAtTime(0.001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.11, t0 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.2);
+      });
     } catch {
       // Ignore audio errors
     }
   }
 
-  _selectZhVoice(speakerId) {
+  _selectBestZhVoice(speakerId) {
     const synth = globalThis.speechSynthesis;
     if (!synth || typeof synth.getVoices !== 'function') return null;
-    const voices = synth.getVoices() || [];
+    const voices = this.cachedVoices.length > 0 ? this.cachedVoices : synth.getVoices() || [];
     const zhVoices = voices.filter((v) => /zh|cmn|chinese/i.test(v.lang));
     if (zhVoices.length === 0) return null;
-    if (speakerId === 'linxia') {
-      return (
-        zhVoices.find((v) => /female|xiaoxiao|ting|huihui|yaoyao|mei|sin/i.test(v.name)) ||
-        zhVoices[0]
-      );
+
+    const scoreVoice = (v) => {
+      let score = 0;
+      const name = (v.name || '').toLowerCase();
+      if (/zh[-_]?cn/i.test(v.lang)) score += 20;
+      if (/natural|neural|online/i.test(name)) score += 40; // Edge Microsoft Neural voices!
+      if (/google/i.test(name)) score += 25; // Chrome Google 普通话!
+      if (speakerId === 'linxia') {
+        if (/xiaoxiao|xiaoyi|ting|huihui|yaoyao|female|mei/i.test(name)) score += 30;
+      } else {
+        if (/yunjian|yunxi|yunyang|kangkang|male|li/i.test(name)) score += 30;
+      }
+      return score;
+    };
+
+    const ranked = [...zhVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    return ranked[0] || null;
+  }
+
+  _playAudioAndSpeech(speakerId, text) {
+    const profile = SPEAKERS[speakerId] || SPEAKERS.tomb;
+    if (speakerId === 'tomb') {
+      this._playTombMetallicResonance();
+    } else {
+      this._playLinXiaChirp();
     }
-    return (
-      zhVoices.find((v) => /male|yunxi|kangkang|yunjian|li/i.test(v.name)) || zhVoices[0]
-    );
+
+    const synth = globalThis.speechSynthesis;
+    if (synth && typeof globalThis.SpeechSynthesisUtterance === 'function') {
+      try {
+        synth.cancel();
+        const utter = new globalThis.SpeechSynthesisUtterance(text);
+        utter.lang = 'zh-CN';
+        utter.pitch = profile.pitch;
+        utter.rate = profile.rate;
+        utter.volume = 0.94;
+        const voice = this._selectBestZhVoice(speakerId);
+        if (voice) utter.voice = voice;
+        synth.speak(utter);
+      } catch {
+        // Gracefully rely on signature cue + subtitle
+      }
+    }
   }
 
   /**
-   * Speak a character line with acoustic signature + Web Speech synthesis + HUD subtitle callback.
+   * Speak a character line with acoustic signature + Neural/Web Speech synthesis + HUD subtitle.
    */
   speak(speakerId, text, options = {}) {
     const profile = SPEAKERS[speakerId] || SPEAKERS.tomb;
-    const durationMs = options.durationMs ?? Math.max(4200, Math.min(7200, text.length * 165));
+    const durationMs = options.durationMs ?? Math.max(4600, Math.min(7600, text.length * 175));
 
     this.onSubtitle({
       visible: true,
@@ -205,27 +295,12 @@ export class CharacterVoiceEngine {
 
     if (!this.enabled) return;
 
-    if (speakerId === 'tomb') {
-      this._playTombMetallicResonance();
-    } else {
-      this._playLinXiaChirp();
+    if (!this.userUnlocked) {
+      // Queue for instant playback on the player's first gesture so Chrome/Edge never drops it!
+      this.pendingSpeech = { speakerId, text };
+      return;
     }
 
-    const synth = globalThis.speechSynthesis;
-    if (synth && typeof globalThis.SpeechSynthesisUtterance === 'function') {
-      try {
-        synth.cancel();
-        const utter = new globalThis.SpeechSynthesisUtterance(text);
-        utter.lang = 'zh-CN';
-        utter.pitch = profile.pitch;
-        utter.rate = profile.rate;
-        utter.volume = 0.88;
-        const voice = this._selectZhVoice(speakerId);
-        if (voice) utter.voice = voice;
-        synth.speak(utter);
-      } catch {
-        // Gracefully rely on signature cue + subtitle
-      }
-    }
+    this._playAudioAndSpeech(speakerId, text);
   }
 }

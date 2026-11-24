@@ -135,17 +135,23 @@ test('Level 14 invariant: rigid-body radius sqrt(xMax^2 + wMax^2 - eps^2) === 1.
     }
   }
 
-  // Exact key angles from GDD
+  // Exact key angles from GDD (Option A: eps = 0.005m near-zero W-thickness)
   const at0 = computeOblateSpheroidExtents(0);
   assert.ok(Math.abs(at0.xMax - 1.0) < TOL);
-  assert.ok(Math.abs(at0.wMax - 0.035) < TOL);
+  assert.ok(Math.abs(at0.wMax - 0.005) < TOL);
 
   const at90 = computeOblateSpheroidExtents(degToRad(90));
-  assert.ok(Math.abs(at90.xMax - 0.035) < TOL);
+  assert.ok(Math.abs(at90.xMax - 0.005) < TOL);
   assert.ok(Math.abs(at90.wMax - 1.0) < TOL);
-  assert.ok(at90.xMax < slitHalfWidth, '90° blade half-width 0.035m must fit cleanly inside 0.082m slit');
+  assert.ok(at90.xMax < slitHalfWidth, '90° blade half-width 0.005m must fit cleanly inside 0.082m slit');
 
-  // Verify ±4° tolerance window (86° fits <= 0.078m < 0.082m; 85° exceeds 0.082m)
+  // Option A geometric honesty check: at just 5° tilt, W=0 slice immediately collapses to a thin disc (< 0.06m),
+  // while total 4D X-span xMax is still > 0.99m (so All-W monolith still blocks until ~90°!)
+  const sliceAt5 = computeOblateSpheroidSliceAtW(degToRad(5), 0, R, eps);
+  assert.ok(sliceAt5.semiX < 0.06, `At 5°, W=0 slice should immediately flatten (<0.06m), got ${sliceAt5.semiX}`);
+  assert.ok(sliceAt5.xMax > 0.99, `At 5°, total 4D xMax should still be >0.99m, got ${sliceAt5.xMax}`);
+
+  // Verify ±4.4° tolerance window (86° fits <= 0.078m < 0.082m; 85° exceeds 0.082m)
   const at86 = computeOblateSpheroidExtents(degToRad(86));
   const at85 = computeOblateSpheroidExtents(degToRad(85));
   assert.ok(at86.xMax < slitHalfWidth, `86° xMax=${at86.xMax} should clear slit ${slitHalfWidth}`);

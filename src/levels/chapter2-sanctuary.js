@@ -50,16 +50,34 @@ export class Level14SanctuaryScene {
     s.fogColor = B.Color3.FromHexString('#14110D');
     s.fogDensity = 0.015;
 
+    // Filmic ACES tone mapping & subtle cathedral vignette for rich obsidian-gold contrast
+    s.imageProcessingConfiguration.toneMappingEnabled = true;
+    s.imageProcessingConfiguration.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
+    s.imageProcessingConfiguration.contrast = 1.18;
+    s.imageProcessingConfiguration.exposure = 1.08;
+    s.imageProcessingConfiguration.vignetteEnabled = true;
+    s.imageProcessingConfiguration.vignetteWeight = 1.4;
+    s.imageProcessingConfiguration.vignetteStretch = 0.4;
+    s.imageProcessingConfiguration.vignetteColor = new B.Color4(0.03, 0.025, 0.018, 0);
+
+    // Cinematic GlowLayer bloom for the platinum hairline slit, orb rim, and golden sanctuary trim
+    const glow = new B.GlowLayer('sanctuary_glow', s, {
+      mainTextureFixedSize: 512,
+      blurKernelSize: 48,
+    });
+    glow.intensity = 0.62;
+    this.glowLayer = glow;
+
     // 3-light budget for crisp architectural contrast and 60 FPS shader speed
     const hemi = new B.HemisphericLight('sanctuary_hemi', new B.Vector3(0, 1, -0.25), s);
-    hemi.intensity = 0.68;
+    hemi.intensity = 0.65;
     hemi.diffuse = B.Color3.FromHexString('#F4ECDC');
-    hemi.groundColor = B.Color3.FromHexString('#1E1912');
+    hemi.groundColor = B.Color3.FromHexString('#1B1610');
 
     const dir = new B.DirectionalLight('sanctuary_dir', new B.Vector3(-0.32, -0.88, 0.32), s);
     dir.position = new B.Vector3(5, 14, -5);
-    dir.intensity = 1.05;
-    dir.diffuse = B.Color3.FromHexString('#FFECC8');
+    dir.intensity = 1.12;
+    dir.diffuse = B.Color3.FromHexString('#FFEAC0');
     dir.specular = B.Color3.FromHexString('#F7C346');
 
     // Orb reactive energy light (dynamically follows orb & turns emerald/platinum)
@@ -69,8 +87,54 @@ export class Level14SanctuaryScene {
       s
     );
     this.orbLight.diffuse = B.Color3.FromHexString(PALETTE.accent.cyanW0);
-    this.orbLight.intensity = 1.35;
-    this.orbLight.range = 9.0;
+    this.orbLight.intensity = 1.45;
+    this.orbLight.range = 10.5;
+  }
+
+  _createMonolithTexture() {
+    const B = this.B;
+    const tex = new B.DynamicTexture('monolith_carved_tex', { width: 512, height: 512 }, this.scene, true);
+    const ctx = tex.getContext();
+
+    // Deep obsidian stone gradient base
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#262017');
+    grad.addColorStop(0.5, '#1D1811');
+    grad.addColorStop(1, '#14110C');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Carved vertical sanctuary fluting & architectural monolith panel seams
+    for (let x = 0; x < 512; x += 64) {
+      ctx.fillStyle = 'rgba(255, 246, 214, 0.025)';
+      ctx.fillRect(x + 2, 0, 10, 512);
+      ctx.strokeStyle = 'rgba(138, 106, 47, 0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 512);
+      ctx.stroke();
+    }
+
+    // Subtle sacred geometric diamond filigree inlays
+    ctx.strokeStyle = 'rgba(247, 195, 70, 0.16)';
+    ctx.lineWidth = 1.5;
+    for (let y = 64; y < 512; y += 128) {
+      for (let x = 64; x < 512; x += 128) {
+        ctx.beginPath();
+        ctx.moveTo(x, y - 28);
+        ctx.lineTo(x + 28, y);
+        ctx.lineTo(x, y + 28);
+        ctx.lineTo(x - 28, y);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+
+    tex.update();
+    tex.uScale = 2;
+    tex.vScale = 2;
+    return tex;
   }
 
   _createFloorTexture() {
@@ -602,14 +666,19 @@ export class Level14SanctuaryScene {
     this.orbRoot.position.set(0, LEVEL14_CONFIG.orbCenterY, LEVEL14_CONFIG.orbStartZ);
     this.orbRoot.parent = this.root;
 
-    // 1. Exact W-slice Solid Core
+    // 1. Exact W-slice Solid Core with crystalline Fresnel rim glow
     this.orbCoreMat = createSolidMaterial(s, 'orb_slice_core_mat', {
       diffuseHex: PALETTE.accent.cyanW0,
       emissiveHex: PALETTE.accent.cyanW0,
-      emissiveScale: 0.45,
+      emissiveScale: 0.35,
       specularHex: '#FFF6D6',
-      specularPower: 96,
+      specularPower: 112,
     });
+    this.orbCoreMat.emissiveFresnelParameters = new B.FresnelParameters();
+    this.orbCoreMat.emissiveFresnelParameters.bias = 0.28;
+    this.orbCoreMat.emissiveFresnelParameters.power = 2.6;
+    this.orbCoreMat.emissiveFresnelParameters.leftColor = B.Color3.FromHexString('#FFF6D6');
+    this.orbCoreMat.emissiveFresnelParameters.rightColor = B.Color3.FromHexString('#143B38');
     this.orbSliceCore = B.MeshBuilder.CreateSphere('orb_slice_core', { diameter: 2.0, segments: 24 }, s);
     this.orbSliceCore.material = this.orbCoreMat;
     this.orbSliceCore.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
@@ -626,9 +695,9 @@ export class Level14SanctuaryScene {
     this.orbProjShell.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.orbProjShell.parent = this.orbProjRoot;
 
-    // 3. SO(3) 3D Meridian & Equator Rings (respond vividly to left-drag while keeping xMax invariant!)
+    // 3. SO(3) 3D Meridian & Equator Rings (tracks true W=0 slice; responds vividly to drag)
     this.orbMeridianRoot = new B.TransformNode('orb_so3_meridians', s);
-    this.orbMeridianRoot.parent = this.orbProjRoot;
+    this.orbMeridianRoot.parent = this.orbRoot;
 
     this.meridianGoldMat = createSolidMaterial(s, 'orb_meridian_gold_mat', {
       diffuseHex: PALETTE.accent.goldWPos,
@@ -815,17 +884,30 @@ export class Level14SanctuaryScene {
     if (slice.intersects) {
       this.orbSliceCore.setEnabled(true);
       this.orbSliceCore.position.set(slice.xCenter, 0, 0);
-      this.orbSliceCore.scaling.set(
-        Math.max(0.015, slice.semiX),
-        Math.max(0.05, slice.semiY),
-        Math.max(0.05, slice.semiZ)
-      );
+      const sx = Math.max(0.006, slice.semiX);
+      const sy = Math.max(0.05, slice.semiY);
+      const sz = Math.max(0.05, slice.semiZ);
+      this.orbSliceCore.scaling.set(sx, sy, sz);
+      // Scale SO(3) meridian rings to match the TRUE W=0 slice (collapses immediately into a 2D disc on slight tilt!)
+      this.orbMeridianRoot.setEnabled(true);
+      this.orbMeridianRoot.position.set(slice.xCenter, 0, 0);
+      this.orbMeridianRoot.scaling.set(sx, sy, sz);
     } else {
       this.orbSliceCore.setEnabled(false);
+      this.orbMeridianRoot.setEnabled(false);
     }
 
-    // Exact 4D X-projection bounding envelope width = xMax(theta)
-    this.orbProjRoot.scaling.set(Math.max(0.028, ext.xMax), 1.0, 1.0);
+    // Option A (Strict Geometric Honesty):
+    // Default main view shows ONLY the pure W=0 3D slice (no ellipsoid projection shell).
+    // Pressing Tab (side_xzw) reveals the translucent 4D projection envelope scaled to xMax(theta)
+    // so the player can see why the tilted ball still collides with the All-W monolith until 90°!
+    const show4DProjection = state.viewMode === 'side_xzw';
+    this.orbProjShell.setEnabled(show4DProjection);
+    if (show4DProjection) {
+      this.orbProjRoot.scaling.set(Math.max(0.012, ext.xMax), 1.0, 1.0);
+    } else {
+      this.orbProjRoot.scaling.set(1.0, 1.0, 1.0);
+    }
 
     const [qx, qy, qz, qw] = state.orbQuat3D;
     if (!this.orbMeridianRoot.rotationQuaternion) {

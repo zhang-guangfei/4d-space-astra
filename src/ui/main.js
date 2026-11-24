@@ -75,6 +75,7 @@ function boot() {
     audioUnlocked = true;
     sfx.unlock();
     sfx.startSanctuaryAmbience();
+    voice.unlockOnGesture();
   };
 
   const announceBeatAdvance = () => {

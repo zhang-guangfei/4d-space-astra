@@ -30,10 +30,10 @@ import {
 
 export const LEVEL14_CONFIG = Object.freeze({
   radiusR: 1.0, // Intrinsic 3D radius (2.0 m diameter)
-  wHalfThickness: 0.035, // 4D W half-thickness epsilon (0.07 m blade thickness at 90°)
+  wHalfThickness: 0.005, // Near-zero 4D W half-thickness (0.01 m sheet; slight tilt immediately collapses W=0 slice to 2D disc!)
   slitHalfWidth: 0.082, // Monolith slit half-width (0.164 m total clear gap)
-  slitClearanceLimit: 0.078, // Required xMax(theta) <= 0.078 m (theta = 90° ± 4°)
-  bladeAngleToleranceDeg: 4.0, // 90° ± 4°
+  slitClearanceLimit: 0.078, // Required xMax(theta) <= 0.078 m (theta = 90° ± 4.4°)
+  bladeAngleToleranceDeg: 4.4, // 90° ± 4.4°
   restoreAngleToleranceDeg: 5.0, // 0° or 180° ± 5°
   wallZMin: -1.2, // Monolith wall slab spans Z in [-1.2, +1.2] across ALL W slices
   wallZMax: 1.2,
@@ -536,18 +536,19 @@ export class Level14HairlineSlitState {
 
   getHonestViewBadge() {
     const ext = this.getExtents();
+    const sl0 = this.getSliceAtW0();
     if (this.viewMode === 'side_xzw') {
       return {
         mode: 'side_xzw',
-        title: `侧面视图 (XZW) · 四维刚体主轴半径恒为 ${ext.rigidRadiusInvariant.toFixed(2)}m（从未被压扁）`,
-        detail: `θ = ${this.thetaDeg.toFixed(1)}° | xMax = ${ext.xMax.toFixed(3)}m | wMax = ${ext.wMax.toFixed(3)}m`,
+        title: `侧面视图 (XZW) + 四维包络示意 · 刚体半径恒为 ${ext.rigidRadiusInvariant.toFixed(2)}m`,
+        detail: `θ = ${this.thetaDeg.toFixed(1)}° | 切片厚 aX=${sl0.semiX.toFixed(3)}m · 四维总宽 xMax=${ext.xMax.toFixed(3)}m`,
       };
     }
     if (this.grabbed) {
       return {
         mode: 'slice',
-        title: '当前切片 W=0 · 外框为四维投影示意',
-        detail: `θ = ${this.thetaDeg.toFixed(1)}° | X 半宽 = ${ext.xMax.toFixed(3)}m（窄缝半宽 0.082m）`,
+        title: '纯净三维切片 W=0（无四维投影叠加）',
+        detail: `θ = ${this.thetaDeg.toFixed(1)}° | 切片半厚 aX=${sl0.semiX.toFixed(3)}m · 四维总宽 xMax=${ext.xMax.toFixed(3)}m（缝 0.082m）`,
       };
     }
     const w = this.playerPos[3];
