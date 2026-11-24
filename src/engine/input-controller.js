@@ -223,6 +223,12 @@ export class InputController {
         return;
       }
 
+      if (e.code === 'KeyI' && !e.repeat) {
+        e.preventDefault();
+        this.cb.onToggleGuide?.();
+        return;
+      }
+
       if (e.code === 'KeyR' && !e.repeat) {
         e.preventDefault();
         this.cb.onReset?.();

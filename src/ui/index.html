@@ -65,6 +65,10 @@
 
     <!-- Top-Right: Lightweight Utility Toolbar -->
     <nav class="hud-top-right" aria-label="辅助工具">
+      <button id="btn-guide" class="tool-btn" type="button" title="按 I 查看四维几何原理类比导览">
+        <span class="keycap">I</span>
+        <span>原理</span>
+      </button>
       <button id="btn-hint" class="tool-btn" type="button" title="按 H 获取角色分级口头提示（卡关 45 秒自动柔和提醒）">
         <span class="keycap">H</span>
         <span id="btn-hint-label">提示 0/3</span>
@@ -128,21 +132,64 @@
       </div>
     </aside>
 
-    <!-- Bottom-Center: Compact Context Control Micro-Strip (Adapts to Walk vs Grab Stage) -->
+    <!-- Bottom-Center: Compact Context Control Micro-Strip (Neutral controls, zero spoilers) -->
     <div id="control-strip" class="control-strip">
-      <span id="control-strip-text">WASD 移动 · 拖拽/点击环视 · <strong>滚轮切 W 切片</strong> · 靠近圆球按 <strong>E</strong> 抓取</span>
+      <span id="control-strip-text">WASD 移动 · 拖拽/点击环视 · <strong>滚轮切 W 切片</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>I</strong> 原理</span>
     </div>
 
     <!-- Compact Transient Block Feedback Toast -->
     <div id="block-toast" class="block-toast" role="status" aria-live="polite"></div>
 
-    <!-- Victory Banner (Non-blocking, bottom-center, lets player admire the opened Sanctuary Gate) -->
+    <!-- Victory Banner (Non-blocking, lets player press E to release grab & walk freely!) -->
     <div id="victory-banner" class="victory-banner" hidden>
       <div class="victory-badge">第 14 关 · 发丝裂缝 通关</div>
-      <p class="victory-copy">直径 2.00m 通行珠已绕 YZ 面旋转过缝并在北侧基座完好复原——圣殿内门已开启。</p>
+      <p class="victory-copy">
+        <strong>四维几何洞察</strong>：三维球体绕 YZ 平面旋转 90° 后完整落入 x = 0 超平面——它从未被压扁，只是把两米直径藏进了第四维 W；穿过发丝裂缝再转回 0°，即完好重现于 W = 0 世界。
+      </p>
       <div class="victory-actions">
-        <button id="btn-replay-victory" class="primary-btn" type="button">重玩垂直切片 (R)</button>
-        <button id="btn-roadmap-victory" class="secondary-btn" type="button">查看 18 关路线图</button>
+        <button id="btn-release-victory" class="primary-btn" type="button">解除操控 · 自由漫游 (E)</button>
+        <button id="btn-replay-victory" class="secondary-btn" type="button">重玩本关 (R)</button>
+        <button id="btn-roadmap-victory" class="secondary-btn" type="button">18 关路线图</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Opening Principle Briefing (2D Coin -> 3D Sphere Analogy; press I anytime) -->
+  <div id="principle-modal" class="modal-backdrop" hidden>
+    <div class="modal-card principle-card" role="dialog" aria-modal="true" aria-labelledby="principle-title">
+      <div class="modal-head">
+        <div>
+          <div class="modal-eyebrow">几何圣殿 · 四维空间原理导览（第 14 关）</div>
+          <h2 id="principle-title" class="modal-title">如何让一颗 2 米圆球，不压扁地穿过 16 厘米发丝裂缝？</h2>
+        </div>
+        <button id="btn-close-principle" class="tool-btn" type="button">跳过 / 关闭</button>
+      </div>
+
+      <canvas id="principle-analogy-canvas" class="principle-canvas"></canvas>
+
+      <div class="principle-slider-row">
+        <span class="mono" style="font-size:11px;color:var(--text-muted);">拖动滑块体验维度旋转：</span>
+        <input id="principle-theta-slider" type="range" min="0" max="90" step="1" value="0" />
+        <span id="principle-theta-readout" class="mono" style="font-size:11px;">θ = 0°</span>
+      </div>
+
+      <div class="principle-points">
+        <div class="principle-point">
+          <strong>1. 为什么平移 W 绕不过？</strong>
+          <span>眼前两座 6.8 米巨墙贯穿<strong>所有 W 切片</strong>（如穿透整叠画纸的高墙），移动你自己永远在墙前。</span>
+        </div>
+        <div class="principle-point">
+          <strong>2. 为什么刚转几度就变扁片，却仍撞墙？</strong>
+          <span>我们只看得见 <code>W = 0</code> 切片，圆球稍一倾斜截面就坍缩为圆盘；但它在 <code>W ≠ 0</code> 的刚体部分仍宽于缝隙，按 <code>Tab</code> 打开 <code>XZW</code> 侧视图即可看清全貌。</span>
+        </div>
+        <div class="principle-point">
+          <strong>3. 你的独立推理挑战</strong>
+          <span>三维旋转改变不了球的宽度；试着利用<strong>鼠标滚轮</strong>绕 <code>YZ</code> 平面把圆球转入第四维，自己找到不压扁球体就能过缝并在北侧基座复原的方法！</span>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:14px;margin-bottom:0;">
+        <button id="btn-start-sanctuary" class="primary-btn" type="button">理解原理 · 进入圣殿亲自验证 (Space)</button>
       </div>
     </div>
   </div>

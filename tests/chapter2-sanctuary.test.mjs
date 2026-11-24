@@ -96,6 +96,12 @@ test('Level 14 Beat 2 & 3 (把玩 → 运用): 3D drag never narrows orb, 90° b
   assert.equal(restore.completed, true);
   assert.equal(s.completed, true);
   assert.equal(s.beat, 3, 'Restoring full sphere on North Pedestal completes Beat 3 (运用)');
+
+  // 8. Regression test: releasing grab (E) AFTER victory must ALWAYS succeed & never trap player behind wall!
+  const release = s.setGrabbed(false);
+  assert.equal(release.grabbed, false);
+  assert.equal(s.grabbed, false);
+  assert.ok(s.playerPos[2] < LEVEL14_CONFIG.wallZMin, 'Released player must return cleanly to South side');
 });
 
 test('TieredHintController: all 18 levels have complete 3-tier oral hints & 45s stagnation timer works', () => {

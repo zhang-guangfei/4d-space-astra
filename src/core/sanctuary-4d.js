@@ -340,18 +340,28 @@ export class Level14HairlineSlitState {
   }
 
   setGrabbed(shouldGrab) {
-    if (shouldGrab && !this.canGrabOrb()) {
-      return { grabbed: false, reason: 'too_far' };
-    }
-    this.grabbed = Boolean(shouldGrab);
-    if (this.grabbed) {
-      // Snap player W smoothly to 0 in Grab Stage so main view honors "当前切片 W=0"
+    if (shouldGrab) {
+      if (this.completed) {
+        return { grabbed: false, reason: 'already_completed' };
+      }
+      if (!this.canGrabOrb()) {
+        return { grabbed: false, reason: 'too_far' };
+      }
+      this.grabbed = true;
+      // Snap player W cleanly to 0 in Grab Stage so main view honors pure W=0 slice
       this.playerPos[3] = 0;
       if (this.beat < 1) {
         this.beat = 1;
       }
+      return { grabbed: true, reason: 'ok' };
     }
-    return { grabbed: this.grabbed, reason: 'ok' };
+
+    // Releasing grab MUST ALWAYS succeed (including after victory!) so camera is never trapped
+    this.grabbed = false;
+    if (this.playerPos[2] > this.config.wallZMin - 1.2) {
+      this.playerPos = [0, 1.85, -5.2, 0];
+    }
+    return { grabbed: false, reason: 'released' };
   }
 
   toggleViewMode() {

@@ -4,9 +4,9 @@
  * - Smart dynamic reticle
  * - Top-center single-line character voice subtitle
  * - Top-left honest view badge, precision tabular-nums telemetry, non-checklist 3-beat card
- * - Top-right H hint pill (45s breathing pulse), voice toggle, F console toggle, Esc menu
- * - Peripheral W-shift / collision shimmer & transient block toast
- * - Esc pause modal + 18-level roadmap overview
+ * - Top-right I Principle Guide, H hint pill (45s breathing pulse), voice toggle, F console toggle, Esc menu
+ * - Non-spoiling neutral control micro-strip (never gives away mechanical puzzle steps!)
+ * - Victory card with core 4D insight takeaway & E release button to walk freely
  */
 
 import { LEVEL_HINTS } from '../core/tiered-hints.js';
@@ -17,6 +17,7 @@ export class HudController {
     this.cb = callbacks;
     this.shimmerTimer = null;
     this.toastTimer = null;
+    this.victoryBannerDismissed = false;
 
     this.els = {
       edgeShimmer: document.getElementById('edge-shimmer'),
@@ -31,6 +32,7 @@ export class HudController {
       subtitleSpeaker: document.getElementById('subtitle-speaker'),
       subtitleTier: document.getElementById('subtitle-tier'),
       subtitleText: document.getElementById('subtitle-text'),
+      btnGuide: document.getElementById('btn-guide'),
       btnHint: document.getElementById('btn-hint'),
       btnHintLabel: document.getElementById('btn-hint-label'),
       btnVoice: document.getElementById('btn-voice'),
@@ -44,6 +46,7 @@ export class HudController {
       controlStripText: document.getElementById('control-strip-text'),
       blockToast: document.getElementById('block-toast'),
       victoryBanner: document.getElementById('victory-banner'),
+      btnReleaseVictory: document.getElementById('btn-release-victory'),
       btnReplayVictory: document.getElementById('btn-replay-victory'),
       btnRoadmapVictory: document.getElementById('btn-roadmap-victory'),
       pauseModal: document.getElementById('pause-modal'),
@@ -76,6 +79,7 @@ export class HudController {
   }
 
   _bindButtons() {
+    this.els.btnGuide?.addEventListener('click', () => this.cb.onToggleGuide?.());
     this.els.btnHint?.addEventListener('click', () => this.cb.onRequestHint?.());
     this.els.btnVoice?.addEventListener('click', () => this.cb.onToggleVoice?.());
     this.els.btnConsole?.addEventListener('click', () => this.cb.onToggleConsole?.());
@@ -86,6 +90,10 @@ export class HudController {
     this.els.btnResetLevel?.addEventListener('click', () => {
       this.cb.onReset?.();
       this.cb.onTogglePause?.();
+    });
+    this.els.btnReleaseVictory?.addEventListener('click', () => {
+      this.victoryBannerDismissed = true;
+      this.cb.onReleaseAfterVictory?.();
     });
     this.els.btnReplayVictory?.addEventListener('click', () => this.cb.onReset?.());
     this.els.btnRoadmapVictory?.addEventListener('click', () => this.cb.onTogglePause?.());
@@ -100,6 +108,14 @@ export class HudController {
       this.els.valWheelSens.textContent = `${val.toFixed(1)}×`;
       this.cb.onSensitivityChange?.({ wheelScale: val });
     });
+  }
+
+  resetBanner() {
+    this.victoryBannerDismissed = false;
+  }
+
+  dismissVictoryBanner() {
+    this.victoryBannerDismissed = true;
   }
 
   showSubtitle({ visible, speaker, text, tierLabel }) {
@@ -132,7 +148,7 @@ export class HudController {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => {
       this.els.blockToast.classList.remove('is-visible');
-    }, 2600);
+    }, 3200);
   }
 
   setVoiceEnabled(enabled) {
@@ -158,6 +174,7 @@ export class HudController {
   sync(state, hintSnapshot) {
     const badge = state.getHonestViewBadge();
     const ext = state.getExtents();
+    const sl0 = state.getSliceAtW0();
     const isBlade = state.isBladeThinEnough();
 
     // 1. Honest View Badge
@@ -173,11 +190,11 @@ export class HudController {
     this.els.honestDot.style.background = dotColor;
     this.els.honestDot.style.boxShadow = `0 0 8px ${dotColor}`;
 
-    // 2. Precision tabular-nums telemetry
+    // 2. Precision tabular-nums telemetry (explicitly distinguishes W=0 slice aX vs 4D total span xMax!)
     const [px, py, pz, pw] = state.playerPos;
     const wSign = pw >= 0 ? '+' : '';
     this.els.telemetryCoord.textContent = `XYZ (${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)}) · W ${wSign}${pw.toFixed(2)}`;
-    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · xMax ${ext.xMax.toFixed(3)}m / 缝 0.082m`;
+    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 切片aX ${sl0.semiX.toFixed(3)}m · 四维宽 ${ext.xMax.toFixed(3)}m / 缝 0.082m`;
     this.els.telemetryOrb.style.color = isBlade ? PALETTE.accent.emerald : '';
 
     // 3. Three-Beat Organic Progress Strip
@@ -192,7 +209,7 @@ export class HudController {
 
     // 5. Tab button label inside side view panel
     if (this.els.btnTabLabel) {
-      this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '返回主切片' : '展开侧视';
+      this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '返回纯净切片' : '展开侧视与包络';
     }
 
     // 6. Smart Dynamic Reticle
@@ -206,25 +223,28 @@ export class HudController {
       this.els.reticlePrompt.textContent = canGrab ? '[E] 抓取通行珠（进入四维旋转舞台）' : '';
     }
 
-    // 7. Context Control Micro-Strip
-    if (state.completed) {
+    // 7. Neutral Non-Spoiling Control Micro-Strip
+    if (state.completed && state.grabbed) {
       this.els.controlStripText.innerHTML =
-        '圣殿通道已开启 · 按 <strong>R</strong> 重玩垂直切片 · 按 <strong>Esc</strong> 查看 18 关路线图';
+        '通关达成 · 按 <strong>E</strong> 解除操控返回自由视角 · 按 <strong>R</strong> 重玩 · <strong>I</strong> 重温原理';
+    } else if (state.completed) {
+      this.els.controlStripText.innerHTML =
+        '圣殿已解锁（自由漫游）· WASD 移动 · 拖拽/点击环视 · 按 <strong>R</strong> 重玩 · <strong>I</strong> 原理';
     } else if (state.grabbed) {
-      const pushHint = state.isOnNorthPedestal()
-        ? '已抵北侧基座：<strong>滚轮转回 0°</strong> 恢复完整圆球'
-        : isBlade
-          ? '已收窄为薄刃：按 <strong>W</strong> 推过发丝裂缝'
-          : '左键拖拽：三维旋转 SO(3) · <strong>滚轮：绕 YZ 面四维旋转</strong> · <strong>W/S</strong> 推动';
-      this.els.controlStripText.innerHTML = `${pushHint} · <strong>Tab</strong> 诚实侧视 · <strong>E</strong> 松开`;
+      const dragLabel =
+        state.viewMode === 'side_xzw'
+          ? '侧视态已锁定三维轴向'
+          : '拖拽：三维旋转 SO(3)';
+      this.els.controlStripText.innerHTML =
+        `${dragLabel} · <strong>滚轮：绕 YZ 面四维旋转</strong> · <strong>W/S</strong> 沿轨移动 · <strong>Tab</strong> 诚实侧视 · <strong>E</strong> 松开`;
     } else {
       this.els.controlStripText.innerHTML =
-        'WASD 移动 · 点击/拖拽环视 · <strong>滚轮切 W 切片</strong> · 走近圆球按 <strong>E</strong> 抓取 · <strong>H</strong> 提示';
+        'WASD 移动 · 拖拽/点击环视 · <strong>滚轮切 W 切片</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>I</strong> 原理 · <strong>H</strong> 提示';
     }
 
-    // 8. Victory Banner
+    // 8. Victory Banner (hidden once player dismisses via E or button)
     if (this.els.victoryBanner) {
-      this.els.victoryBanner.hidden = !state.completed;
+      this.els.victoryBanner.hidden = !state.completed || this.victoryBannerDismissed;
     }
   }
 }
