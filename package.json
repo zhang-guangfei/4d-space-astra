@@ -1,0 +1,16 @@
+{
+  "name": "beyond-3d",
+  "version": "0.1.0",
+  "description": "《维度之外 · Beyond 3D》— 基于真实四维欧氏几何与拓扑学的 3D 第一人称科幻解谜游戏",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check.mjs",
+    "build:site": "node scripts/build-site.mjs",
+    "serve": "node scripts/serve.mjs"
+  },
+  "dependencies": {
+    "babylonjs": "^9.37.2"
+  }
+}

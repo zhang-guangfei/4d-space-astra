@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>维度之外 · Beyond 3D — 第 14 关：发丝裂缝</title>
+  <meta name="description" content="《维度之外 · Beyond 3D》— 基于真实四维欧氏几何与拓扑学的 3D 第一人称科幻解谜游戏（Phase 1 垂直切片：第 14 关发丝裂缝）。" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="zone-c">
+  <!-- Full-bleed 3D WebGL Viewport (85%+ unobstructed space) -->
+  <canvas id="render-canvas" aria-label="Beyond 3D 四维空间视口"></canvas>
+
+  <!-- Subtle Peripheral W-Layer / Collision Vignette -->
+  <div id="edge-shimmer" class="edge-shimmer" aria-hidden="true"></div>
+
+  <!-- Minimal Scientific HUD Layer -->
+  <div id="hud-root" class="hud-root">
+    <!-- Top-Left: Honest View Badge + Precision Telemetry + Non-Checklist 3-Beat Strip -->
+    <section class="hud-top-left" aria-label="空间切片与探索反馈">
+      <div class="level-tag">
+        <span class="zone-pill">C 区 · 几何圣殿</span>
+        <h1 class="level-heading">第 14 关 · 发丝裂缝</h1>
+      </div>
+
+      <div id="honest-view-badge" class="honest-badge">
+        <div class="badge-dot" id="honest-badge-dot"></div>
+        <div class="badge-text">
+          <div id="honest-badge-title" class="badge-title">当前切片 W = +0.00 · 青苍切片</div>
+          <div id="honest-badge-detail" class="badge-detail">一线天巨墙在所有 W 切片均实体存在</div>
+        </div>
+      </div>
+
+      <div class="telemetry-bar" aria-label="四维几何读数">
+        <span id="telemetry-coord" class="mono">XYZ (0.0, 1.7, -6.2) · W +0.00</span>
+        <span class="sep">|</span>
+        <span id="telemetry-orb" class="mono">θ 0.0° · xMax 1.000m / 缝 0.082m</span>
+      </div>
+
+      <!-- Non-Checklist 3-Beat Discovery Feedback (lights up organically upon discovery) -->
+      <div class="beats-strip" aria-label="探索节奏">
+        <div class="beat-chip" data-beat="1">
+          <span class="beat-num">①</span>
+          <span class="beat-label">奇观</span>
+        </div>
+        <span class="beat-arrow">›</span>
+        <div class="beat-chip" data-beat="2">
+          <span class="beat-num">②</span>
+          <span class="beat-label">把玩</span>
+        </div>
+        <span class="beat-arrow">›</span>
+        <div class="beat-chip" data-beat="3">
+          <span class="beat-num">③</span>
+          <span class="beat-label">运用</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top-Center: Single-Line Character Voice Subtitle Bar -->
+    <aside id="subtitle-bar" class="subtitle-bar" aria-live="polite">
+      <span id="subtitle-speaker" class="subtitle-speaker">遗迹 AI ·「墓地」</span>
+      <span id="subtitle-tier" class="subtitle-tier"></span>
+      <span id="subtitle-text" class="subtitle-text"></span>
+    </aside>
+
+    <!-- Top-Right: Lightweight Utility Toolbar -->
+    <nav class="hud-top-right" aria-label="辅助工具">
+      <button id="btn-hint" class="tool-btn" type="button" title="按 H 获取角色分级口头提示（卡关 45 秒自动柔和提醒）">
+        <span class="keycap">H</span>
+        <span id="btn-hint-label">提示 0/3</span>
+      </button>
+      <button id="btn-voice" class="tool-btn is-active" type="button" title="开关双角色配音">
+        <span id="btn-voice-label">配音 开</span>
+      </button>
+      <button id="btn-console" class="tool-btn is-active" type="button" title="按 F 展开/收起高维全息操作台">
+        <span class="keycap">F</span>
+        <span>高维台</span>
+      </button>
+      <button id="btn-pause" class="tool-btn" type="button" title="按 Esc 暂停 / 选关 / 设置">
+        <span class="keycap">Esc</span>
+        <span>菜单</span>
+      </button>
+    </nav>
+
+    <!-- Center: Smart Dynamic Reticle -->
+    <div id="reticle" class="reticle" aria-hidden="true">
+      <div class="reticle-mark"></div>
+      <div id="reticle-prompt" class="reticle-prompt"></div>
+    </div>
+
+    <!-- Bottom-Left: Honest XZW Side-View Panel (Visible in Grab Stage; expands on Tab) -->
+    <section id="side-view-panel" class="side-view-panel" aria-label="XZW 侧面诚实视图">
+      <div class="panel-header">
+        <span class="panel-title">侧面视图 (XZW) · 刚体旋转真实截面</span>
+        <button id="btn-tab-view" class="mini-key-btn" type="button" title="按 Tab 切换诚实双视图">
+          <span class="keycap">Tab</span>
+          <span id="btn-tab-label">展开</span>
+        </button>
+      </div>
+      <canvas id="side-view-canvas" class="side-view-canvas"></canvas>
+      <div class="panel-caption">
+        圆球主轴半径恒为 <strong class="mono">1.00m</strong>（从未被压扁），滚轮仅改变其在 <span class="mono">X–W</span> 平面的刚体朝向。
+      </div>
+    </section>
+
+    <!-- Right Edge: Vertical W Phase Ruler + Collapsible 3-Slice Hyper-Holographic Console (F) -->
+    <aside id="tactical-wrapper" class="tactical-wrapper" aria-label="高维全息操作台">
+      <!-- Slim Always-Visible Vertical W Phase Ruler -->
+      <div class="w-ruler" title="鼠标滚轮沿第四维 W 轴平移">
+        <span class="w-tick w-pos">+1.8</span>
+        <div class="w-track">
+          <div class="w-mark" style="top: 9.1%; background: #F7C346;"></div>
+          <div class="w-mark" style="top: 50%; background: #4DE6D3;"></div>
+          <div class="w-mark" style="top: 90.9%; background: #58A6FF;"></div>
+          <div id="w-ruler-cursor" class="w-cursor"></div>
+        </div>
+        <span class="w-tick w-neg">−1.8</span>
+        <span id="w-ruler-readout" class="w-readout mono">W +0.00</span>
+      </div>
+
+      <!-- Collapsible 3-Slice Side-by-Side Holographic Viewport -->
+      <div id="tactical-body" class="tactical-body">
+        <div class="panel-header">
+          <span class="panel-title">高维全息台 · 三折页同步</span>
+          <span class="mono panel-sub">W = −1.8 / 0 / +1.8</span>
+        </div>
+        <canvas id="tactical-canvas" class="tactical-canvas"></canvas>
+      </div>
+    </aside>
+
+    <!-- Bottom-Center: Compact Context Control Micro-Strip (Adapts to Walk vs Grab Stage) -->
+    <div id="control-strip" class="control-strip">
+      <span id="control-strip-text">WASD 移动 · 拖拽/点击环视 · <strong>滚轮切 W 切片</strong> · 靠近圆球按 <strong>E</strong> 抓取</span>
+    </div>
+
+    <!-- Compact Transient Block Feedback Toast -->
+    <div id="block-toast" class="block-toast" role="status" aria-live="polite"></div>
+
+    <!-- Victory Banner (Non-blocking, bottom-center, lets player admire the opened Sanctuary Gate) -->
+    <div id="victory-banner" class="victory-banner" hidden>
+      <div class="victory-badge">第 14 关 · 发丝裂缝 通关</div>
+      <p class="victory-copy">直径 2.00m 通行珠已绕 YZ 面旋转过缝并在北侧基座完好复原——圣殿内门已开启。</p>
+      <div class="victory-actions">
+        <button id="btn-replay-victory" class="primary-btn" type="button">重玩垂直切片 (R)</button>
+        <button id="btn-roadmap-victory" class="secondary-btn" type="button">查看 18 关路线图</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Esc Pause / Level Roadmap / Sensitivity Modal -->
+  <div id="pause-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="modal-head">
+        <div>
+          <div class="modal-eyebrow">BEYOND 3D · PHASE 1 垂直切片验收</div>
+          <h2 id="pause-title" class="modal-title">暂停与设置</h2>
+        </div>
+        <button id="btn-close-pause" class="tool-btn" type="button">继续 (Esc)</button>
+      </div>
+
+      <div class="settings-grid">
+        <label class="setting-row">
+          <span>视角与拖拽灵敏度</span>
+          <input id="input-mouse-sens" type="range" min="0.4" max="2.2" step="0.1" value="1.0" />
+          <span id="val-mouse-sens" class="mono">1.0×</span>
+        </label>
+        <label class="setting-row">
+          <span>滚轮四维操控灵敏度</span>
+          <input id="input-wheel-sens" type="range" min="0.4" max="2.2" step="0.1" value="1.0" />
+          <span id="val-wheel-sens" class="mono">1.0×</span>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btn-reset-level" class="secondary-btn" type="button">重置第 14 关 (R)</button>
+        <button id="btn-resume-level" class="primary-btn" type="button">返回圣殿</button>
+      </div>
+
+      <div class="roadmap-section">
+        <div class="roadmap-title">两章 18 关全流程路线图（当前开放：Phase 1 第 14 关垂直切片）</div>
+        <div id="roadmap-grid" class="roadmap-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Local vendored Babylon.js (works 100% offline & in GitHub Pages) -->
+  <script src="../../vendor/babylon.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
