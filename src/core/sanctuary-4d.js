@@ -30,7 +30,7 @@ import {
 
 export const LEVEL14_CONFIG = Object.freeze({
   radiusR: 1.0, // Intrinsic 3D radius (2.0 m diameter)
-  wHalfThickness: 0.005, // Near-zero 4D W half-thickness (0.01 m sheet; slight tilt immediately collapses W=0 slice to 2D disc!)
+  wHalfThickness: 0.001, // Near-zero 4D W half-thickness (0.002 m sheet; slight tilt immediately collapses W=0 slice to 2D disc!)
   slitHalfWidth: 0.082, // Monolith slit half-width (0.164 m total clear gap)
   slitClearanceLimit: 0.078, // Required xMax(theta) <= 0.078 m (theta = 90° ± 4.4°)
   bladeAngleToleranceDeg: 4.4, // 90° ± 4.4°

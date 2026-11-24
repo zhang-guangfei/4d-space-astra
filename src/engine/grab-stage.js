@@ -61,37 +61,50 @@ export class GrabStageController {
       this.camTarget.x = lerp(this.camTarget.x, desiredTarget.x, fpSmooth);
       this.camTarget.y = lerp(this.camTarget.y, desiredTarget.y, fpSmooth);
       this.camTarget.z = lerp(this.camTarget.z, desiredTarget.z, fpSmooth);
-    } else if (state.viewMode === 'side_xzw') {
-      // Elevated angled framing showing the orb + monolith slit clearly alongside the expanded XZW canvas
-      desiredPos = {
-        x: 3.35,
-        y: 3.35,
-        z: state.orbZ - 3.35,
-      };
-      desiredTarget = {
-        x: 0.25,
-        y: LEVEL14_CONFIG.orbCenterY + 0.15,
-        z: Math.min(1.6, state.orbZ + 1.15),
-      };
-      this.camPos.x = lerp(this.camPos.x, desiredPos.x, smooth);
-      this.camPos.y = lerp(this.camPos.y, desiredPos.y, smooth);
-      this.camPos.z = lerp(this.camPos.z, desiredPos.z, smooth);
-      this.camTarget.x = lerp(this.camTarget.x, desiredTarget.x, smooth);
-      this.camTarget.y = lerp(this.camTarget.y, desiredTarget.y, smooth);
-      this.camTarget.z = lerp(this.camTarget.z, desiredTarget.z, smooth);
     } else {
-      // Third-person Grab & Rotate Stage: hero composition framing Passing Orb + 6.8m Hairline Slit ahead
-      const isNorth = state.orbZ > 1.3;
-      desiredPos = {
-        x: isNorth ? 2.4 : 2.15,
-        y: isNorth ? 2.65 : 2.55,
-        z: isNorth ? state.orbZ - 3.8 : state.orbZ - 4.35,
-      };
-      desiredTarget = {
-        x: 0,
-        y: LEVEL14_CONFIG.orbCenterY + 0.2,
-        z: isNorth ? state.orbZ + 1.8 : Math.min(2.8, state.orbZ + 1.6),
-      };
+      // Zero-Occlusion 3-Zone Slit Camera Choreography (consistent in both Slice & Tab Side View):
+      // Zone 1 (South, orbZ <= -1.05): Diagonal hero framing of Passing Orb + Hairline Slit ahead
+      // Zone 2 (Slit Transit, -1.05 < orbZ < +1.15): Slit-centered periscope (X=0) looking straight
+      //         down the open 0.164m luminous hairline corridor — ZERO wall occlusion!
+      // Zone 3 (North Emergence, orbZ >= +1.15): North-side hero framing (Z > +1.2) looking back at
+      //         the orb emerging onto the North Golden Pedestal — ZERO wall occlusion!
+      const isSide = state.viewMode === 'side_xzw';
+      if (state.orbZ <= -1.05) {
+        desiredPos = {
+          x: isSide ? 2.35 : 2.15,
+          y: isSide ? 2.75 : 2.55,
+          z: state.orbZ - 4.35,
+        };
+        desiredTarget = {
+          x: 0,
+          y: LEVEL14_CONFIG.orbCenterY + 0.18,
+          z: Math.min(2.6, state.orbZ + 1.6),
+        };
+      } else if (state.orbZ < 1.15) {
+        // Centered cleanly on X=0 looking straight through the open hairline slit!
+        desiredPos = {
+          x: 0.0,
+          y: 2.08,
+          z: -2.85,
+        };
+        desiredTarget = {
+          x: 0.0,
+          y: LEVEL14_CONFIG.orbCenterY,
+          z: state.orbZ + 0.9,
+        };
+      } else {
+        // Emerged cleanly on North side: camera stays strictly on North side (Z > +1.2)
+        desiredPos = {
+          x: isSide ? 2.5 : 2.35,
+          y: isSide ? 2.75 : 2.6,
+          z: Math.max(2.3, state.orbZ + 3.45),
+        };
+        desiredTarget = {
+          x: 0,
+          y: LEVEL14_CONFIG.orbCenterY + 0.12,
+          z: state.orbZ - 0.35,
+        };
+      }
       this.camPos.x = lerp(this.camPos.x, desiredPos.x, smooth);
       this.camPos.y = lerp(this.camPos.y, desiredPos.y, smooth);
       this.camPos.z = lerp(this.camPos.z, desiredPos.z, smooth);

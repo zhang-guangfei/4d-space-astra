@@ -191,6 +191,8 @@ function boot() {
       }
     },
     onGrabDrag3D: (deltaYaw, deltaPitch) => {
+      // Lock 3D rotation axes in Tab Side View so mouse movement never disorients the player
+      if (state.viewMode === 'side_xzw') return;
       state.rotateOrb3D(deltaYaw, deltaPitch);
     },
     onWheel4D: (wheelUnits) => {
