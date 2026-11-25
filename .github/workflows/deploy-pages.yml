@@ -47,6 +47,8 @@ jobs:
           path: "_site"
 
   deploy:
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -56,3 +58,35 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  edge-playtest:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prepare Edge
+        run: |
+          npm install --prefix "$RUNNER_TEMP/astra-browser" --no-audit --no-fund playwright-core@1.56.1
+          if ! command -v microsoft-edge >/dev/null; then
+            "$RUNNER_TEMP/astra-browser/node_modules/.bin/playwright-core" install msedge
+          fi
+      - name: Play the published level through the portal
+        env:
+          PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+          NODE_PATH: ${{ runner.temp }}/astra-browser/node_modules
+          PLAYTEST_OUTPUT: ${{ runner.temp }}/level14-playtest
+        run: node scripts/play-level14.mjs "${PAGES_URL%/}/src/ui/index.html?level=14&rev=$GITHUB_SHA"
+      - name: Save playtest frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: level14-edge-playtest
+          path: ${{ runner.temp }}/level14-playtest
+          if-no-files-found: ignore
+          retention-days: 14
