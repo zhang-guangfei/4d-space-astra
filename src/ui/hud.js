@@ -48,7 +48,10 @@ export class HudController {
       victoryBanner: document.getElementById('victory-banner'),
       btnReleaseVictory: document.getElementById('btn-release-victory'),
       btnReplayVictory: document.getElementById('btn-replay-victory'),
-      btnRoadmapVictory: document.getElementById('btn-roadmap-victory'),
+      teleporterModal: document.getElementById('teleporter-modal'),
+      btnTeleporterReplay: document.getElementById('btn-teleporter-replay'),
+      btnTeleporterRoadmap: document.getElementById('btn-teleporter-roadmap'),
+      btnTeleporterStay: document.getElementById('btn-teleporter-stay'),
       pauseModal: document.getElementById('pause-modal'),
       btnClosePause: document.getElementById('btn-close-pause'),
       btnResumeLevel: document.getElementById('btn-resume-level'),
@@ -96,7 +99,20 @@ export class HudController {
       this.cb.onReleaseAfterVictory?.();
     });
     this.els.btnReplayVictory?.addEventListener('click', () => this.cb.onReset?.());
-    this.els.btnRoadmapVictory?.addEventListener('click', () => this.cb.onTogglePause?.());
+
+    this.els.btnTeleporterReplay?.addEventListener('click', () => {
+      this.setTeleporterVisible(false);
+      this.cb.onReset?.();
+    });
+    this.els.btnTeleporterRoadmap?.addEventListener('click', () => {
+      this.setTeleporterVisible(false);
+      this.cb.onCloseTeleporterModal?.();
+      this.cb.onTogglePause?.();
+    });
+    this.els.btnTeleporterStay?.addEventListener('click', () => {
+      this.setTeleporterVisible(false);
+      this.cb.onCloseTeleporterModal?.();
+    });
 
     this.els.inputMouseSens?.addEventListener('input', (e) => {
       const val = parseFloat(e.target.value);
@@ -112,10 +128,17 @@ export class HudController {
 
   resetBanner() {
     this.victoryBannerDismissed = false;
+    this.setTeleporterVisible(false);
   }
 
   dismissVictoryBanner() {
     this.victoryBannerDismissed = true;
+  }
+
+  setTeleporterVisible(visible) {
+    if (this.els.teleporterModal) {
+      this.els.teleporterModal.hidden = !visible;
+    }
   }
 
   showSubtitle({ visible, speaker, text, tierLabel }) {
@@ -184,18 +207,18 @@ export class HudController {
 
     let dotColor = PALETTE.accent.cyanW0;
     if (badge.mode === 'side_xzw') dotColor = PALETTE.accent.goldWPos;
-    else if (state.completed) dotColor = PALETTE.accent.platinum;
+    else if (state.completed) dotColor = PALETTE.accent.emerald;
     else if (state.playerPos[3] > 0.6) dotColor = PALETTE.accent.goldWPos;
     else if (state.playerPos[3] < -0.6) dotColor = PALETTE.accent.blueWNeg;
     this.els.honestDot.style.background = dotColor;
     this.els.honestDot.style.boxShadow = `0 0 8px ${dotColor}`;
 
-    // 2. Precision tabular-nums telemetry (explicitly distinguishes W=0 slice aX vs 4D total span xMax!)
+    // 2. Precision tabular-nums telemetry (zero "W=0切片" jargon)
     const [px, py, pz, pw] = state.playerPos;
     const wSign = pw >= 0 ? '+' : '';
-    this.els.telemetryCoord.textContent = `XYZ (${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)}) · W ${wSign}${pw.toFixed(2)}`;
-    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 切片aX ${sl0.semiX.toFixed(3)}m · 四维宽 ${ext.xMax.toFixed(3)}m / 缝 0.082m`;
-    this.els.telemetryOrb.style.color = isBlade ? PALETTE.accent.emerald : '';
+    this.els.telemetryCoord.textContent = `XYZ (${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)}) · w ${wSign}${pw.toFixed(2)}`;
+    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 切面 ${sl0.semiX.toFixed(3)}m · 总宽 ${ext.xMax.toFixed(3)}m / 缝 0.082m`;
+    this.els.telemetryOrb.style.color = isBlade || state.completed ? PALETTE.accent.emerald : '';
 
     // 3. Three-Beat Organic Progress Strip
     for (const chip of this.els.beatChips) {
@@ -209,7 +232,7 @@ export class HudController {
 
     // 5. Tab button label inside side view panel
     if (this.els.btnTabLabel) {
-      this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '返回纯净切片' : '展开侧视与包络';
+      this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '返回三维切面' : '查看第四维侧视';
     }
 
     // 6. Smart Dynamic Reticle
@@ -220,31 +243,31 @@ export class HudController {
       this.els.reticle.classList.remove('is-hidden');
       const canGrab = state.canGrabOrb() && !state.completed;
       this.els.reticle.classList.toggle('is-interactable', canGrab);
-      this.els.reticlePrompt.textContent = canGrab ? '[E] 抓取通行珠（进入四维旋转舞台）' : '';
+      this.els.reticlePrompt.textContent = canGrab ? '[E] 抓取圆球（操作这把钥匙）' : '';
     }
 
-    // 7. Neutral Non-Spoiling Control Micro-Strip
+    // 7. Context Control Micro-Strip (zero W=0 jargon)
     if (state.completed && state.grabbed) {
       this.els.controlStripText.innerHTML =
-        '通关达成 · 按 <strong>E</strong> 解除操控返回自由视角 · 按 <strong>R</strong> 重玩 · <strong>I</strong> 重温原理';
+        '钥匙归位，四维巨墙正在打开 · 按 <strong>E</strong> 返回自由视角走向北侧传送台';
     } else if (state.completed) {
       this.els.controlStripText.innerHTML =
-        '圣殿已解锁（自由漫游）· WASD 移动 · 拖拽/点击环视 · 按 <strong>R</strong> 重玩 · <strong>I</strong> 原理';
+        '四维巨墙已打开 · 按 <strong>WASD</strong> 穿过巨墙踏上前方<strong>北侧传送台</strong> · 按 <strong>R</strong> 重玩';
     } else if (state.grabbed) {
       const dragLabel =
         state.viewMode === 'side_xzw'
           ? '侧视态已锁定三维轴向'
-          : '拖拽：三维旋转 SO(3)';
+          : '拖拽：三维旋转';
       this.els.controlStripText.innerHTML =
-        `${dragLabel} · <strong>滚轮：绕 YZ 面四维旋转</strong> · <strong>W/S</strong> 沿轨移动 · <strong>Tab</strong> 诚实侧视 · <strong>E</strong> 松开`;
+        `${dragLabel} · <strong>滚轮：在第四维度旋转球</strong> · <strong>W/S</strong> 前后推拉 · <strong>Tab</strong> 第四维侧视 · <strong>E</strong> 松开`;
     } else {
       this.els.controlStripText.innerHTML =
-        'WASD 移动 · 拖拽/点击环视 · <strong>滚轮切 W 切片</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>I</strong> 原理 · <strong>H</strong> 提示';
+        'WASD 移动 · 拖拽/点击环视 · <strong>滚轮沿 w 轴移动</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>H</strong> 提示 · <strong>I</strong> 原理';
     }
 
-    // 8. Victory Banner (hidden once player dismisses via E or button)
+    // 8. Victory Banner (non-blocking; hidden once player starts walking toward teleporter or presses E)
     if (this.els.victoryBanner) {
-      this.els.victoryBanner.hidden = !state.completed || this.victoryBannerDismissed;
+      this.els.victoryBanner.hidden = !state.completed || this.victoryBannerDismissed || state.enteredTeleporter;
     }
   }
 }

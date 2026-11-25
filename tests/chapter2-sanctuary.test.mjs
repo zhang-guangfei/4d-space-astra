@@ -66,11 +66,15 @@ test('Level 14 Beat 2 & 3 (把玩 → 运用): 3D drag never narrows orb, 90° b
   assert.ok(rotRes.extents.xMax <= 0.036);
   assert.equal(s.beat, 2, 'Rotating into blade state should naturally light Beat 2 (把玩)');
 
-  // Verify Honest Dual View toggle (Tab)
-  assert.equal(s.getHonestViewBadge().mode, 'slice');
+  // Verify Honest Dual View toggle (Tab) and clean Level 14 terminology (zero "W=0" jargon)
+  const sliceBadge = s.getHonestViewBadge();
+  assert.equal(sliceBadge.mode, 'slice');
+  assert.doesNotMatch(sliceBadge.title + sliceBadge.detail, /W\s*=\s*0/i);
   s.toggleViewMode();
-  assert.equal(s.getHonestViewBadge().mode, 'side_xzw');
-  assert.match(s.getHonestViewBadge().title, /1\.00m/);
+  const sideBadge = s.getHonestViewBadge();
+  assert.equal(sideBadge.mode, 'side_xzw');
+  assert.match(sideBadge.title, /1\.00m/);
+  assert.doesNotMatch(sideBadge.title + sideBadge.detail, /W\s*=\s*0/i);
   s.toggleViewMode();
 
   // 4. Push thin blade into the middle of the hairline slit (Z = 0.0)
@@ -90,7 +94,7 @@ test('Level 14 Beat 2 & 3 (把玩 → 运用): 3D drag never narrows orb, 90° b
   assert.equal(s.isOnNorthPedestal(), true);
   assert.equal(s.completed, false, 'Still thin blade — must rotate back to 0°/180° to complete!');
 
-  // 7. Rotate back to 0° (or 180°) on North Pedestal -> Victory!
+  // 7. Rotate back to 0° (or 180°) on North Pedestal -> Victory (Key unlocks walls!)
   const restore = s.rotateOrb4D(-90);
   assert.equal(restore.applied, true);
   assert.equal(restore.completed, true);
@@ -102,6 +106,21 @@ test('Level 14 Beat 2 & 3 (把玩 → 运用): 3D drag never narrows orb, 90° b
   assert.equal(release.grabbed, false);
   assert.equal(s.grabbed, false);
   assert.ok(s.playerPos[2] < LEVEL14_CONFIG.wallZMin, 'Released player must return cleanly to South side');
+
+  // 9. Key-opens-wall & Teleporter progression: monolith opens so player walks through Z=0 onto Teleporter (Z=6.4)!
+  assert.equal(s.isPlayerBlockedByMonolith(0, 0), false, 'Monolith wall must open automatically after victory');
+  s.playerPos = [0, 1.85, -3.5, 0];
+  let reachedPortal = false;
+  for (let step = 0; step < 25; step += 1) {
+    const walkRes = s.movePlayerXZ(0, 0.45);
+    assert.equal(walkRes.blockedByWall, false, 'Opened monolith must allow unobstructed passage');
+    if (walkRes.justEnteredTeleporter) {
+      reachedPortal = true;
+      break;
+    }
+  }
+  assert.equal(reachedPortal, true, 'Walking north past opened walls must trigger North Teleportation Pad');
+  assert.equal(s.enteredTeleporter, true);
 });
 
 test('TieredHintController: all 18 levels have complete 3-tier oral hints & 45s stagnation timer works', () => {

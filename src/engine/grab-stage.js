@@ -153,7 +153,9 @@ export class GrabStageController {
     const toPxW = (w) => cy - w * scale;
 
     const ext = state.getExtents();
-    const sliceW0 = state.getSliceAtW0();
+    const activeW = state.grabbed ? 0 : state.playerPos[3];
+    const activeSlice = state.grabbed ? state.getSliceAtW0() : state.getSliceAtPlayerW();
+    const activeSliceY = Math.max(24, Math.min(cssH - 26, toPxW(activeW)));
     const isBlade = state.isBladeThinEnough();
     const inWallZ = state.isOrbOverlappingWallZ();
 
@@ -205,20 +207,54 @@ export class GrabStageController {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 4. Primary Axes: X (horizontal) & W (vertical)
-    ctx.strokeStyle = 'rgba(77, 230, 211, 0.75)'; // W = 0 slice hyperplane line!
-    ctx.lineWidth = 1.4;
+    // 4. Primary Axes: Horizontal "我们所在的三维切面" & Vertical Arrowed Number Line "第四维度 w"
+    if (Math.abs(activeW) > 0.02) {
+      // Faint origin reference line at center
+      ctx.strokeStyle = 'rgba(77, 230, 211, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(16, cy);
+      ctx.lineTo(cssW - 16, cy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.strokeStyle = 'rgba(77, 230, 211, 0.88)';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(16, cy);
-    ctx.lineTo(cssW - 16, cy);
+    ctx.moveTo(16, activeSliceY);
+    ctx.lineTo(cssW - 16, activeSliceY);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(247, 195, 70, 0.55)'; // W axis
-    ctx.lineWidth = 1.2;
+    // Vertical Fourth-Dimension w Arrowed Number Line with scale ticks
+    const axisTop = 20;
+    const axisBot = cssH - 24;
+    ctx.strokeStyle = PALETTE.accent.goldWPos;
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(cx, 18);
-    ctx.lineTo(cx, cssH - 22);
+    ctx.moveTo(cx, axisBot);
+    ctx.lineTo(cx, axisTop);
     ctx.stroke();
+
+    // Crisp upward arrowhead at +w tip
+    ctx.fillStyle = PALETTE.accent.goldWPos;
+    ctx.beginPath();
+    ctx.moveTo(cx, axisTop - 4);
+    ctx.lineTo(cx - 5, axisTop + 6);
+    ctx.lineTo(cx + 5, axisTop + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Number-line scale tick marks (-1, +1) along w axis
+    ctx.strokeStyle = 'rgba(247, 195, 70, 0.72)';
+    ctx.lineWidth = 1.2;
+    for (const wTick of [-1, 1]) {
+      const ty = toPxW(wTick);
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, ty);
+      ctx.lineTo(cx + 4, ty);
+      ctx.stroke();
+    }
 
     // 5. Projection drop lines showing xMax(theta) on X-axis
     const xMaxPx = ext.xMax * scale;
@@ -269,32 +305,34 @@ export class GrabStageController {
       ctx.fill();
     }
 
-    // 7. Highlight exact W = 0 intersection segment in vivid Cyan
-    if (sliceW0.intersects) {
+    // 7. Highlight intersection segment on our 3D slice in vivid Cyan
+    if (activeSlice.intersects) {
       ctx.strokeStyle = PALETTE.accent.cyanW0;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 4.2;
       ctx.beginPath();
-      ctx.moveTo(toPxX(sliceW0.xCenter - sliceW0.semiX), cy);
-      ctx.lineTo(toPxX(sliceW0.xCenter + sliceW0.semiX), cy);
+      ctx.moveTo(toPxX(activeSlice.xCenter - activeSlice.semiX), activeSliceY);
+      ctx.lineTo(toPxX(activeSlice.xCenter + activeSlice.semiX), activeSliceY);
       ctx.stroke();
     }
 
-    // 8. Scientific Axis & Invariant Labels
+    // 8. Clear Human-Readable Labels (ZERO "W=0 切片" jargon!)
     const isCompact = cssW < 340;
-    ctx.font = `600 ${isCompact ? 10 : 11}px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.font = `600 ${isCompact ? 10 : 11}px "Inter", "PingFang SC", sans-serif`;
     ctx.fillStyle = PALETTE.accent.goldWPos;
-    ctx.fillText('+W (第四维)', cx + 6, 29);
-    ctx.fillStyle = PALETTE.accent.blueWNeg;
-    ctx.fillText('-W', cx + 6, cssH - 28);
+    ctx.textAlign = 'left';
+    ctx.fillText('第四维度 w ↑', cx + 8, axisTop + 10);
 
     ctx.fillStyle = PALETTE.accent.cyanW0;
-    ctx.fillText(isCompact ? 'W=0 → +X' : 'W=0 切片 → +X', cssW - (isCompact ? 68 : 102), cy - 6);
+    ctx.textAlign = 'right';
+    ctx.fillText('我们所在的三维切面', cssW - 12, Math.max(36, activeSliceY - 7));
 
+    ctx.font = `600 ${isCompact ? 10 : 11}px "JetBrains Mono", ui-monospace, monospace`;
     ctx.fillStyle = PALETTE.accent.platinum;
+    ctx.textAlign = 'left';
     ctx.fillText(
       isCompact
         ? `R=${ext.rigidRadiusInvariant.toFixed(2)}m 恒定`
-        : `R = ${ext.rigidRadiusInvariant.toFixed(2)}m (刚体恒定)`,
+        : `R = ${ext.rigidRadiusInvariant.toFixed(2)}m (从未压扁)`,
       12,
       cssH - 8
     );
@@ -303,8 +341,8 @@ export class GrabStageController {
     ctx.fillStyle = isBlade ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
     ctx.fillText(
       isCompact
-        ? `xMax=${ext.xMax.toFixed(3)}m ${isBlade ? '✓' : '>0.082'}`
-        : `xMax=${ext.xMax.toFixed(3)}m ${isBlade ? '✓ 可过缝' : '> 0.082m'}`,
+        ? `总宽 ${ext.xMax.toFixed(3)}m ${isBlade ? '✓' : '>0.082'}`
+        : `四维总半宽 ${ext.xMax.toFixed(3)}m ${isBlade ? '✓ 可过缝' : '> 0.082m'}`,
       cssW - 12,
       cssH - 8
     );

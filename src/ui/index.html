@@ -26,15 +26,15 @@
       <div id="honest-view-badge" class="honest-badge">
         <div class="badge-dot" id="honest-badge-dot"></div>
         <div class="badge-text">
-          <div id="honest-badge-title" class="badge-title">当前切片 W = +0.00 · 青苍切片</div>
-          <div id="honest-badge-detail" class="badge-detail">一线天巨墙在所有 W 切片均实体存在</div>
+          <div id="honest-badge-title" class="badge-title">我们所在的三维切面 · 第四维坐标 w = +0.00</div>
+          <div id="honest-badge-detail" class="badge-detail">四维巨墙贯穿整个 w 轴，思考如何让球穿过狭缝</div>
         </div>
       </div>
 
       <div class="telemetry-bar" aria-label="四维几何读数">
-        <span id="telemetry-coord" class="mono">XYZ (0.0, 1.7, -6.2) · W +0.00</span>
+        <span id="telemetry-coord" class="mono">XYZ (1.6, 1.9, -7.8) · w +0.00</span>
         <span class="sep">|</span>
-        <span id="telemetry-orb" class="mono">θ 0.0° · xMax 1.000m / 缝 0.082m</span>
+        <span id="telemetry-orb" class="mono">θ 0.0° · 四维总宽 1.000m / 缝 0.082m</span>
       </div>
 
       <!-- Non-Checklist 3-Beat Discovery Feedback (lights up organically upon discovery) -->
@@ -56,10 +56,12 @@
       </div>
     </section>
 
-    <!-- Top-Center: Single-Line Character Voice Subtitle Bar -->
+    <!-- Top-Center: Clean Character Voice Subtitle Card -->
     <aside id="subtitle-bar" class="subtitle-bar" aria-live="polite">
-      <span id="subtitle-speaker" class="subtitle-speaker">遗迹 AI ·「墓地」</span>
-      <span id="subtitle-tier" class="subtitle-tier"></span>
+      <div class="subtitle-head">
+        <span id="subtitle-speaker" class="subtitle-speaker">遗迹 AI ·「墓地」</span>
+        <span id="subtitle-tier" class="subtitle-tier"></span>
+      </div>
       <span id="subtitle-text" class="subtitle-text"></span>
     </aside>
 
@@ -92,25 +94,25 @@
       <div id="reticle-prompt" class="reticle-prompt"></div>
     </div>
 
-    <!-- Bottom-Left: Honest XZW Side-View Panel (Visible in Grab Stage; expands on Tab) -->
-    <section id="side-view-panel" class="side-view-panel" aria-label="XZW 侧面诚实视图">
+    <!-- Bottom-Left: Honest Fourth-Dimension Side-View Panel (Visible in Grab Stage; expands on Tab) -->
+    <section id="side-view-panel" class="side-view-panel" aria-label="第四维度侧视图">
       <div class="panel-header">
-        <span class="panel-title">侧面视图 (XZW) · 刚体旋转真实截面</span>
-        <button id="btn-tab-view" class="mini-key-btn" type="button" title="按 Tab 切换诚实双视图">
+        <span class="panel-title">第四维度侧视图 · 观察球的完整形态</span>
+        <button id="btn-tab-view" class="mini-key-btn" type="button" title="按 Tab 切换第四维度侧视图">
           <span class="keycap">Tab</span>
           <span id="btn-tab-label">展开</span>
         </button>
       </div>
       <canvas id="side-view-canvas" class="side-view-canvas"></canvas>
       <div class="panel-caption">
-        圆球主轴半径恒为 <strong class="mono">1.00m</strong>（从未被压扁），滚轮仅改变其在 <span class="mono">X–W</span> 平面的刚体朝向。
+        青色横线为<strong>我们所在的三维切面</strong>，金色箭头数轴为<strong>第四维度 w</strong>；圆球半径恒为 <strong class="mono">1.00m</strong>，从未被压扁。
       </div>
     </section>
 
-    <!-- Right Edge: Vertical W Phase Ruler + Collapsible 3-Slice Hyper-Holographic Console (F) -->
+    <!-- Right Edge: Vertical w Phase Ruler + Collapsible 3-Layer Hyper-Holographic Console (F) -->
     <aside id="tactical-wrapper" class="tactical-wrapper" aria-label="高维全息操作台">
-      <!-- Slim Always-Visible Vertical W Phase Ruler -->
-      <div class="w-ruler" title="鼠标滚轮沿第四维 W 轴平移">
+      <!-- Slim Always-Visible Vertical w Phase Ruler -->
+      <div class="w-ruler" title="鼠标滚轮沿第四维度 w 轴移动">
         <span class="w-tick w-pos">+1.8</span>
         <div class="w-track">
           <div class="w-mark" style="top: 9.1%; background: #F7C346;"></div>
@@ -119,77 +121,93 @@
           <div id="w-ruler-cursor" class="w-cursor"></div>
         </div>
         <span class="w-tick w-neg">−1.8</span>
-        <span id="w-ruler-readout" class="w-readout mono">W +0.00</span>
+        <span id="w-ruler-readout" class="w-readout mono">w +0.00</span>
       </div>
 
-      <!-- Collapsible 3-Slice Side-by-Side Holographic Viewport -->
+      <!-- Collapsible 3-Layer Side-by-Side Holographic Viewport -->
       <div id="tactical-body" class="tactical-body">
         <div class="panel-header">
-          <span class="panel-title">高维全息台 · 三折页同步</span>
-          <span class="mono panel-sub">W = −1.8 / 0 / +1.8</span>
+          <span class="panel-title">高维全息台 · 三层俯视</span>
+          <span class="mono panel-sub">沿第四维度 w</span>
         </div>
         <canvas id="tactical-canvas" class="tactical-canvas"></canvas>
       </div>
     </aside>
 
-    <!-- Bottom-Center: Compact Context Control Micro-Strip (Neutral controls, zero spoilers) -->
+    <!-- Bottom-Center: Compact Context Control Micro-Strip -->
     <div id="control-strip" class="control-strip">
-      <span id="control-strip-text">WASD 移动 · 拖拽/点击环视 · <strong>滚轮切 W 切片</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>I</strong> 原理</span>
+      <span id="control-strip-text">WASD 移动 · 拖拽/点击环视 · <strong>滚轮沿 w 轴移动</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>H</strong> 提示 · <strong>I</strong> 原理</span>
     </div>
 
     <!-- Compact Transient Block Feedback Toast -->
     <div id="block-toast" class="block-toast" role="status" aria-live="polite"></div>
 
-    <!-- Victory Banner (Non-blocking, lets player press E to release grab & walk freely!) -->
+    <!-- Compact Non-Blocking Unlock Banner (Walls part open automatically so player walks to Teleporter!) -->
     <div id="victory-banner" class="victory-banner" hidden>
-      <div class="victory-badge">第 14 关 · 发丝裂缝 通关</div>
+      <div class="victory-badge">钥匙归位 · 四维巨墙已为你敞开</div>
       <p class="victory-copy">
-        <strong>四维几何洞察</strong>：三维球体绕 YZ 平面旋转 90° 后完整落入 x = 0 超平面——它从未被压扁，只是把两米直径藏进了第四维 W；穿过发丝裂缝再转回 0°，即完好重现于 W = 0 世界。
+        圆球从未被压扁，只是像立起的硬币一样把宽度转进了第四维度 w。现在请<strong>穿过打开的四维巨墙</strong>，走向前方发光的<strong>北侧传送台</strong>前往下一关！
       </p>
       <div class="victory-actions">
-        <button id="btn-release-victory" class="primary-btn" type="button">解除操控 · 自由漫游 (E)</button>
+        <button id="btn-release-victory" class="primary-btn" type="button">好的 · 前往传送台 (E)</button>
         <button id="btn-replay-victory" class="secondary-btn" type="button">重玩本关 (R)</button>
-        <button id="btn-roadmap-victory" class="secondary-btn" type="button">18 关路线图</button>
       </div>
     </div>
   </div>
 
-  <!-- Interactive Opening Principle Briefing (2D Coin -> 3D Sphere Analogy; press I anytime) -->
+  <!-- Enlarged Interactive 3D Principle Briefing (Press I anytime; never auto-blocks level entry) -->
   <div id="principle-modal" class="modal-backdrop" hidden>
     <div class="modal-card principle-card" role="dialog" aria-modal="true" aria-labelledby="principle-title">
       <div class="modal-head">
         <div>
-          <div class="modal-eyebrow">几何圣殿 · 四维空间原理导览（第 14 关）</div>
-          <h2 id="principle-title" class="modal-title">如何让一颗 2 米圆球，不压扁地穿过 16 厘米发丝裂缝？</h2>
+          <div class="modal-eyebrow">几何圣殿 · 四维空间 3D 原理动画（第 14 关）</div>
+          <h2 id="principle-title" class="modal-title">如何让三维的球，像立起的硬币一样穿过四维狭缝？</h2>
         </div>
-        <button id="btn-close-principle" class="tool-btn" type="button">跳过 / 关闭</button>
+        <button id="btn-close-principle" class="tool-btn" type="button">关闭返回 (Space)</button>
       </div>
 
       <canvas id="principle-analogy-canvas" class="principle-canvas"></canvas>
 
       <div class="principle-slider-row">
-        <span class="mono" style="font-size:11px;color:var(--text-muted);">拖动滑块体验维度旋转：</span>
+        <span class="mono" style="font-size:12px;color:var(--text-muted);">拖动滑块观察 3D 旋转过程：</span>
         <input id="principle-theta-slider" type="range" min="0" max="90" step="1" value="0" />
-        <span id="principle-theta-readout" class="mono" style="font-size:11px;">θ = 0°</span>
+        <span id="principle-theta-readout" class="mono" style="font-size:12px;">θ = 0°</span>
       </div>
 
       <div class="principle-points">
         <div class="principle-point">
-          <strong>1. 为什么平移 W 绕不过？</strong>
-          <span>眼前两座 6.8 米巨墙贯穿<strong>所有 W 切片</strong>（如穿透整叠画纸的高墙），移动你自己永远在墙前。</span>
+          <strong>1. 从二维硬币类比到三维圆球</strong>
+          <span>想让平放在纸面上的硬币通过竖直狭缝，只要旋转硬币让它在第三维立起来；同理，现在的球就像平放的硬币，我们要让它在<strong>第四维度 w</strong> 里立起来。</span>
         </div>
         <div class="principle-point">
-          <strong>2. 为什么刚转几度就变扁片，却仍撞墙？</strong>
-          <span>我们只看得见 <code>W = 0</code> 切片，圆球稍一倾斜截面就坍缩为圆盘；但它在 <code>W ≠ 0</code> 的刚体部分仍宽于缝隙，按 <code>Tab</code> 打开 <code>XZW</code> 侧视图即可看清全貌。</span>
+          <strong>2. 为什么转一点点就变扁，却仍撞墙？</strong>
+          <span>球转出当前三维空间后，只在<strong>我们所在的三维切面</strong>留下一层圆切面（就像倾斜的硬币在纸面只留一条直径），但球其余部分跨在第四维度 w 轴上，必须转满 <code>90°</code> 完全立直才能穿过狭缝。</span>
         </div>
         <div class="principle-point">
-          <strong>3. 你的独立推理挑战</strong>
-          <span>三维旋转改变不了球的宽度；试着利用<strong>鼠标滚轮</strong>绕 <code>YZ</code> 平面把圆球转入第四维，自己找到不压扁球体就能过缝并在北侧基座复原的方法！</span>
+          <strong>3. 沿 w 轴看球的不同切面</strong>
+          <span>按 <code>Tab</code> 打开第四维度侧视图看清球的真实姿态；当你沿 <code>w</code> 轴前后移动时，看到的其实是球被切成的不同圆面，它们沿 <code>w</code> 轴拼接起来就是完整的三维圆球。</span>
         </div>
       </div>
 
-      <div class="modal-actions" style="margin-top:14px;margin-bottom:0;">
-        <button id="btn-start-sanctuary" class="primary-btn" type="button">理解原理 · 进入圣殿亲自验证 (Space)</button>
+      <div class="modal-actions" style="margin-top:16px;margin-bottom:0;">
+        <button id="btn-start-sanctuary" class="primary-btn" type="button">返回关卡继续探索 (Space)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- North Teleportation Pad Modal (Triggered when player walks through parted walls onto Z = 6.4 Teleporter) -->
+  <div id="teleporter-modal" class="modal-backdrop" hidden>
+    <div class="modal-card teleporter-card" role="dialog" aria-modal="true" aria-labelledby="teleporter-title">
+      <div class="teleporter-badge">已抵达传送台 · 第 14 关完成</div>
+      <h2 id="teleporter-title" class="modal-title" style="margin-top:10px;">传送坐标锁定：第 15 关 · 圆环桥</h2>
+      <p class="teleporter-copy">
+        你已经真正掌握了四维旋转的本质：<strong>三维圆球没有被压扁，而是像一枚硬币一样在第四维度 w 里立了起来</strong>，借此穿过发丝狭缝、化作钥匙为你敞开四维巨墙。<br /><br />
+        下一关「第 15 关 · 圆环桥」将在 <strong>Phase 2</strong> 全量关卡阶段正式开放。
+      </p>
+      <div class="victory-actions">
+        <button id="btn-teleporter-replay" class="primary-btn" type="button">再玩一次第 14 关 (R)</button>
+        <button id="btn-teleporter-roadmap" class="secondary-btn" type="button">查看 18 关路线图</button>
+        <button id="btn-teleporter-stay" class="secondary-btn" type="button">留在圣殿漫游</button>
       </div>
     </div>
   </div>

@@ -1,19 +1,221 @@
 /**
- * Beyond 3D — Interactive Opening Principle Briefing ("纸上硬币 → 四维圆球" Dimensional Analogy)
+ * Beyond 3D — Interactive Principle Briefing ("二维硬币 → 四维圆球" 3D Perspective Dimensional Analogy)
  *
- * Designed specifically to solve "players brute-force keys without understanding WHY":
- * - Shows a live side-by-side animated geometric analogy:
- *   LEFT:  2D Flatlander's Coin (diameter 2.0m) on paper (Z=0) tilted into 3rd dimension Z to pass a 0.16m slit
- *   RIGHT: Our 3D Passing Orb (diameter 2.0m) in slice W=0 rotated around YZ into 4th dimension W
- * - Interactive angle slider (0°..90°) OR smooth auto-play lets first-time players IMMEDIATELY witness:
- *   1. Why even a 5° tilt instantly collapses the W=0 slice into a razor-thin disc (just like a tilted coin cuts paper as a line!)
- *   2. Why the tilted ball STILL hits the All-W monolith wall until it stands fully vertical at 90°!
- *   3. Why the rigid radius NEVER shrinks (R = 1.00m invariant — never squashed!)
- * - Never prints a mechanical "press W then scroll back" checklist; empowers genuine independent deduction!
+ * Strictly scoped to Level 14:
+ * - Large, readable canvas with true 3D perspective projection on both panels:
+ *   LEFT:  3D perspective coin on a 2D paper plane lifting into 3rd dimension height to clear a vertical slit
+ *   RIGHT: True 3D perspective animation of our 3D sphere rotating off "我们所在的三维切面"
+ *          along an arrowed golden number line representing "第四维度 w"
+ * - NEVER displays "W=0切片" / "W=0" anywhere; always uses "我们所在的三维切面" and "第四维度 w"
  */
 
 import { degToRad } from '../core/math4d.js';
 import { PALETTE } from '../engine/phase-materials.js';
+
+/**
+ * Simple 3D perspective projector (X = right, Y = depth away/toward viewer, Z = vertical extra dimension).
+ */
+function makeProjector3D(cx, cy, scale, yawRad, pitchRad, camDist = 6.4) {
+  const cyaw = Math.cos(yawRad);
+  const syaw = Math.sin(yawRad);
+  const cpitch = Math.cos(pitchRad);
+  const spitch = Math.sin(pitchRad);
+
+  return function project(x, y, z) {
+    // Rotate around vertical Z axis by yaw
+    const rx = x * cyaw - y * syaw;
+    const ry = x * syaw + y * cyaw;
+    // Tilt camera by pitch around X axis
+    const py = ry * cpitch - z * spitch;
+    const pz = ry * spitch + z * cpitch;
+
+    const denom = Math.max(1.5, camDist + py);
+    const persp = camDist / denom;
+    return {
+      sx: cx + rx * scale * persp,
+      sy: cy - pz * scale * persp,
+      depth: py,
+      persp,
+    };
+  };
+}
+
+function drawPolygon3D(ctx, pts3D, project, fillStyle, strokeStyle, lineWidth = 1) {
+  const pts2D = pts3D.map(([x, y, z]) => project(x, y, z));
+  ctx.beginPath();
+  pts2D.forEach((p, idx) => {
+    if (idx === 0) ctx.moveTo(p.sx, p.sy);
+    else ctx.lineTo(p.sx, p.sy);
+  });
+  ctx.closePath();
+  if (fillStyle) {
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+  }
+  if (strokeStyle) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+  return pts2D;
+}
+
+function drawBox3D(ctx, x0, x1, y0, y1, z0, z1, project, colors) {
+  // Painter's order for camera looking from (-Y, +Z, +X)
+  const faces = [
+    // Bottom
+    {
+      pts: [
+        [x0, y0, z0],
+        [x1, y0, z0],
+        [x1, y1, z0],
+        [x0, y1, z0],
+      ],
+      fill: colors.side,
+    },
+    // Back (+Y)
+    {
+      pts: [
+        [x0, y1, z0],
+        [x1, y1, z0],
+        [x1, y1, z1],
+        [x0, y1, z1],
+      ],
+      fill: colors.side,
+    },
+    // Left (-X)
+    {
+      pts: [
+        [x0, y0, z0],
+        [x0, y1, z0],
+        [x0, y1, z1],
+        [x0, y0, z1],
+      ],
+      fill: colors.inner,
+    },
+    // Right (+X)
+    {
+      pts: [
+        [x1, y0, z0],
+        [x1, y1, z0],
+        [x1, y1, z1],
+        [x1, y0, z1],
+      ],
+      fill: colors.inner,
+    },
+    // Front (-Y)
+    {
+      pts: [
+        [x0, y0, z0],
+        [x1, y0, z0],
+        [x1, y0, z1],
+        [x0, y0, z1],
+      ],
+      fill: colors.front,
+    },
+    // Top (+Z)
+    {
+      pts: [
+        [x0, y0, z1],
+        [x1, y0, z1],
+        [x1, y1, z1],
+        [x0, y1, z1],
+      ],
+      fill: colors.top,
+    },
+  ];
+
+  // Sort back-to-front by average projected depth
+  faces
+    .map((f) => {
+      const proj = f.pts.map(([x, y, z]) => project(x, y, z));
+      const avgDepth = proj.reduce((acc, p) => acc + p.depth, 0) / proj.length;
+      return { ...f, proj, avgDepth };
+    })
+    .sort((a, b) => b.avgDepth - a.avgDepth)
+    .forEach((f) => {
+      ctx.beginPath();
+      f.proj.forEach((p, idx) => {
+        if (idx === 0) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
+      });
+      ctx.closePath();
+      ctx.fillStyle = f.fill;
+      ctx.fill();
+      if (colors.stroke) {
+        ctx.strokeStyle = colors.stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    });
+}
+
+function drawArrowedNumberLine3D(ctx, project, axisLabel, zMin = -1.48, zMax = 1.56) {
+  const pBot = project(0, 0, zMin);
+  const pTop = project(0, 0, zMax);
+
+  // Subtle glow underlay
+  ctx.save();
+  ctx.strokeStyle = 'rgba(247, 195, 70, 0.25)';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(pBot.sx, pBot.sy);
+  ctx.lineTo(pTop.sx, pTop.sy);
+  ctx.stroke();
+
+  // Crisp golden axis shaft
+  ctx.strokeStyle = PALETTE.accent.goldWPos;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(pBot.sx, pBot.sy);
+  ctx.lineTo(pTop.sx, pTop.sy);
+  ctx.stroke();
+
+  // Directional arrowhead at +axis tip
+  const dx = pTop.sx - pBot.sx;
+  const dy = pTop.sy - pBot.sy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy;
+  const py = ux;
+
+  ctx.fillStyle = PALETTE.accent.goldWPos;
+  ctx.beginPath();
+  ctx.moveTo(pTop.sx + ux * 7, pTop.sy + uy * 7);
+  ctx.lineTo(pTop.sx - ux * 8 + px * 6, pTop.sy - uy * 8 + py * 6);
+  ctx.lineTo(pTop.sx - ux * 8 - px * 6, pTop.sy - uy * 8 - py * 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Number-line scale ticks: -1, 0, +1
+  ctx.font = '600 11px "JetBrains Mono", ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  for (const tick of [
+    { v: -1.0, label: '−1' },
+    { v: 0.0, label: '0' },
+    { v: 1.0, label: '+1' },
+  ]) {
+    const tL = project(-0.08, 0, tick.v);
+    const tR = project(0.08, 0, tick.v);
+    ctx.strokeStyle = PALETTE.accent.goldWPos;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(tL.sx, tL.sy);
+    ctx.lineTo(tR.sx, tR.sy);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 246, 214, 0.85)';
+    ctx.fillText(tick.label, tR.sx + 5, tR.sy + 4);
+  }
+
+  // Axis Title right beside arrowhead
+  ctx.font = '700 13px "Inter", "PingFang SC", sans-serif';
+  ctx.fillStyle = PALETTE.accent.goldWPos;
+  ctx.textAlign = 'left';
+  ctx.fillText(axisLabel, pTop.sx + 12, pTop.sy + 4);
+  ctx.restore();
+}
 
 export class PrincipleGuideController {
   constructor(callbacks = {}) {
@@ -29,6 +231,7 @@ export class PrincipleGuideController {
     this.visible = false;
     this.autoPlay = true;
     this.animPhase = 0;
+    this.orbitPhase = 0;
     this.thetaDeg = 0;
     this.rafId = null;
 
@@ -85,9 +288,9 @@ export class PrincipleGuideController {
       if (!this.visible) return;
       const dt = Math.min(0.05, (now - prev) / 1000);
       prev = now;
+      this.orbitPhase += dt * 0.45;
       if (this.autoPlay) {
-        this.animPhase = (this.animPhase + dt * 0.42) % (Math.PI * 2);
-        // Smooth dwell at 0° -> rise to 90° -> dwell at 90° -> return
+        this.animPhase = (this.animPhase + dt * 0.46) % (Math.PI * 2);
         const s = 0.5 - 0.5 * Math.cos(this.animPhase);
         this.thetaDeg = Math.round(s * 900) / 10;
         if (this.sliderEl) this.sliderEl.value = String(Math.round(this.thetaDeg));
@@ -110,8 +313,8 @@ export class PrincipleGuideController {
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = this.canvas.getBoundingClientRect();
-    const cssW = Math.max(520, Math.round(rect.width));
-    const cssH = Math.max(210, Math.round(rect.height));
+    const cssW = Math.max(760, Math.round(rect.width));
+    const cssH = Math.max(360, Math.round(rect.height));
     if (this.canvas.width !== cssW * dpr || this.canvas.height !== cssH * dpr) {
       this.canvas.width = cssW * dpr;
       this.canvas.height = cssH * dpr;
@@ -121,8 +324,18 @@ export class PrincipleGuideController {
     ctx.save();
     ctx.scale(dpr, dpr);
 
-    // Background obsidian plate
-    ctx.fillStyle = '#120F0B';
+    // Rich dark obsidian radial backdrop
+    const bgGrad = ctx.createRadialGradient(
+      cssW * 0.5,
+      cssH * 0.45,
+      30,
+      cssW * 0.5,
+      cssH * 0.5,
+      cssW * 0.65
+    );
+    bgGrad.addColorStop(0, '#1B1610');
+    bgGrad.addColorStop(1, '#0F0C08');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, cssW, cssH);
 
     const thetaRad = degToRad(this.thetaDeg);
@@ -133,170 +346,387 @@ export class PrincipleGuideController {
     const canPass = xMax <= 0.082;
 
     if (this.angleReadoutEl) {
-      this.angleReadoutEl.textContent = `演示转角 θ = ${this.thetaDeg.toFixed(0)}° · 截面半厚 ${sliceSemiX.toFixed(3)}m · 四维总半宽 ${xMax.toFixed(3)}m ${
-        canPass ? '✓ 可过 0.082m 缝' : '✗ 撞墙'
+      this.angleReadoutEl.textContent = `当前旋转角 θ = ${this.thetaDeg.toFixed(0)}° · 切面厚度 ${sliceSemiX.toFixed(3)}m · 四维总半宽 ${xMax.toFixed(3)}m ${
+        canPass ? '✓ 已立直，可穿过狭缝' : '✗ 仍宽于狭缝'
       }`;
       this.angleReadoutEl.style.color = canPass ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
     }
 
     const halfW = cssW * 0.5;
 
-    // Divider line
-    ctx.strokeStyle = 'rgba(138, 106, 47, 0.32)';
+    // Subtle vertical divider between Left (2D Coin Analogy) & Right (3D Sphere -> 4D w Animation)
+    ctx.strokeStyle = 'rgba(138, 106, 47, 0.38)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(halfW, 12);
-    ctx.lineTo(halfW, cssH - 12);
+    ctx.moveTo(halfW, 16);
+    ctx.lineTo(halfW, cssH - 16);
     ctx.stroke();
 
+    // Gentle living 3D camera sway so depth & parallax are unmistakably 3D!
+    const sway = Math.sin(this.orbitPhase) * 0.14;
+
     // =========================================================================
-    // LEFT PANEL: 2D Paper World -> Lift Coin into 3rd Dimension (Z)
+    // LEFT PANEL: 3D Perspective Coin on 2D Paper -> Lifting into 3rd Dimension
     // =========================================================================
-    this._drawAnalogySide(ctx, {
+    this._drawLeftCoin3D(ctx, {
       x0: 0,
       width: halfW,
       height: cssH,
-      title: '① 类比：二维纸面上的硬币 → 借第三维立起',
-      planeLabel: '画纸世界 (Z=0)',
-      extraAxisLabel: '+Z (第三维高度)',
-      sliceCaption:
-        this.thetaDeg < 2
-          ? '纸面看到：完整圆币'
-          : '纸面切片：立刻缩成细线！',
       thetaRad,
-      xMax,
-      sliceSemiX,
       canPass,
-      accentHex: PALETTE.accent.cyanW0,
+      yaw: -0.46 + sway * 0.6,
+      pitch: 0.44,
     });
 
     // =========================================================================
-    // RIGHT PANEL: Our 3D World (W=0) -> Rotate Sphere around YZ into 4th Dim (W)
+    // RIGHT PANEL: True 3D Perspective Sphere Rotating Off "我们所在的三维切面"
+    //              Along Arrowed Number Line "第四维度 w"
     // =========================================================================
-    this._drawAnalogySide(ctx, {
+    this._drawRightSphere4D3D(ctx, {
       x0: halfW,
       width: halfW,
       height: cssH,
-      title: '② 本关：三维世界里的圆球 → 借第四维 W 立起',
-      planeLabel: '我们所在切片 (W=0)',
-      extraAxisLabel: '+W (第四维)',
-      sliceCaption:
-        this.thetaDeg < 2
-          ? 'W=0 看到：完整 2m 圆球'
-          : canPass
-            ? '90° 立入 W 维：全宽 0.002m 过缝！'
-            : `切片已扁，但 W≠0 仍宽 ${xMax.toFixed(2)}m 撞墙`,
       thetaRad,
       xMax,
       sliceSemiX,
       canPass,
-      accentHex: PALETTE.accent.goldWPos,
+      yaw: -0.52 + sway,
+      pitch: 0.40,
     });
 
     ctx.restore();
   }
 
-  _drawAnalogySide(ctx, cfg) {
+  _drawLeftCoin3D(ctx, cfg) {
     const cx = cfg.x0 + cfg.width * 0.5;
-    const cy = cfg.height * 0.54;
-    const R = Math.min(cfg.width * 0.24, cfg.height * 0.31);
-    const slitHalfPx = Math.max(5.5, R * 0.082);
+    const cy = cfg.height * 0.55;
+    const scale = Math.min(cfg.width * 0.25, cfg.height * 0.30);
+    const project = makeProjector3D(cx, cy, scale, cfg.yaw, cfg.pitch, 6.2);
 
-    // Panel title
-    ctx.font = '600 12px "Inter", "PingFang SC", sans-serif';
+    // Panel Header
+    ctx.font = '700 14px "Inter", "PingFang SC", sans-serif';
     ctx.fillStyle = PALETTE.accent.platinum;
     ctx.textAlign = 'center';
-    ctx.fillText(cfg.title, cx, 22);
+    ctx.fillText('① 降维类比：二维纸面硬币 → 在第三维立起来', cx, 28);
 
-    // All-extra-dimension Monolith Wall hatched flanks outside ±0.082m
-    ctx.fillStyle = cfg.canPass ? 'rgba(105, 240, 174, 0.08)' : 'rgba(138, 106, 47, 0.18)';
-    ctx.fillRect(cfg.x0 + 18, 34, cx - slitHalfPx - (cfg.x0 + 18), cfg.height - 64);
-    ctx.fillRect(cx + slitHalfPx, 34, cfg.x0 + cfg.width - 18 - (cx + slitHalfPx), cfg.height - 64);
+    // 1. 2D Paper Plane (horizontal translucent cyan-ivory sheet at z = 0)
+    const planeR = 1.68;
+    drawPolygon3D(
+      ctx,
+      [
+        [-planeR, -1.28, 0],
+        [planeR, -1.28, 0],
+        [planeR, 1.28, 0],
+        [-planeR, 1.28, 0],
+      ],
+      project,
+      'rgba(77, 230, 211, 0.11)',
+      'rgba(77, 230, 211, 0.62)',
+      1.5
+    );
 
-    // Hairline slit vertical lips
-    ctx.strokeStyle = cfg.canPass ? PALETTE.accent.emerald : 'rgba(255, 246, 214, 0.72)';
+    // Paper subtle grid lines
+    ctx.strokeStyle = 'rgba(77, 230, 211, 0.16)';
+    ctx.lineWidth = 1;
+    for (const g of [-1.0, -0.5, 0.5, 1.0]) {
+      const a = project(g, -1.28, 0);
+      const b = project(g, 1.28, 0);
+      ctx.beginPath();
+      ctx.moveTo(a.sx, a.sy);
+      ctx.lineTo(b.sx, b.sy);
+      ctx.stroke();
+
+      const c = project(-planeR, g, 0);
+      const d = project(planeR, g, 0);
+      ctx.beginPath();
+      ctx.moveTo(c.sx, c.sy);
+      ctx.lineTo(d.sx, d.sy);
+      ctx.stroke();
+    }
+
+    // 2. Vertical 3D Slit Walls rising across the paper (leaving a narrow central slit!)
+    const slitGap = 0.17;
+    const wallColors = {
+      front: cfg.canPass ? 'rgba(105, 240, 174, 0.14)' : 'rgba(138, 106, 47, 0.22)',
+      top: cfg.canPass ? 'rgba(105, 240, 174, 0.22)' : 'rgba(196, 152, 68, 0.28)',
+      side: 'rgba(84, 64, 28, 0.16)',
+      inner: cfg.canPass ? 'rgba(105, 240, 174, 0.34)' : 'rgba(255, 246, 214, 0.24)',
+      stroke: cfg.canPass ? 'rgba(105, 240, 174, 0.65)' : 'rgba(218, 178, 96, 0.5)',
+    };
+    drawBox3D(ctx, -1.55, -slitGap, 0.36, 0.62, -0.95, 1.15, project, wallColors);
+    drawBox3D(ctx, slitGap, 1.55, 0.36, 0.62, -0.95, 1.15, project, wallColors);
+
+    // 3. Golden Arrowed Number Line for 3rd dimension (height)
+    drawArrowedNumberLine3D(ctx, project, '第三维高度', -1.28, 1.42);
+
+    // 4. 3D Tilted Golden Coin (radius R = 0.94 rotated around Y axis by thetaRad)
+    const R = 0.94;
+    const cosT = Math.cos(cfg.thetaRad);
+    const sinT = Math.sin(cfg.thetaRad);
+    const coinPts = [];
+    const segs = 48;
+    for (let i = 0; i < segs; i += 1) {
+      const a = (i / segs) * Math.PI * 2;
+      const lx = R * Math.cos(a);
+      const ly = R * Math.sin(a);
+      // Rotate around Y: x' = lx * cosT, z' = lx * sinT
+      coinPts.push([lx * cosT, ly, lx * sinT]);
+    }
+
+    // Coin subtle thickness rim
+    const rimPts = coinPts.map(([x, y, z]) => [x + sinT * 0.045, y, z - cosT * 0.045]);
+    drawPolygon3D(
+      ctx,
+      rimPts,
+      project,
+      cfg.canPass ? 'rgba(64, 185, 130, 0.45)' : 'rgba(166, 122, 36, 0.62)',
+      null
+    );
+
+    // Main gleaming coin face
+    const coinFill = cfg.canPass
+      ? 'rgba(105, 240, 174, 0.36)'
+      : 'rgba(247, 195, 70, 0.36)';
+    const coinStroke = cfg.canPass ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
+    drawPolygon3D(ctx, coinPts, project, coinFill, coinStroke, 2.2);
+
+    // Coin inner decorative emboss ring
+    const innerCoinPts = [];
+    for (let i = 0; i < segs; i += 1) {
+      const a = (i / segs) * Math.PI * 2;
+      const lx = R * 0.72 * Math.cos(a);
+      const ly = R * 0.72 * Math.sin(a);
+      innerCoinPts.push([lx * cosT, ly, lx * sinT]);
+    }
+    drawPolygon3D(ctx, innerCoinPts, project, null, 'rgba(255, 246, 214, 0.5)', 1.1);
+
+    // 5. Highlight Intersection Line on the 2D Paper Plane (z = 0)!
+    // When theta > 2°, the tilted coin intersects the paper along a single glowing diameter line (x=0, y in [-R, R])!
+    if (this.thetaDeg >= 2) {
+      const iA = project(0, -R, 0);
+      const iB = project(0, R, 0);
+      ctx.strokeStyle = PALETTE.accent.cyanW0;
+      ctx.lineWidth = 4.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(iA.sx, iA.sy);
+      ctx.lineTo(iB.sx, iB.sy);
+      ctx.stroke();
+    }
+
+    // Plane label
+    const pPlaneTag = project(1.58, -1.18, 0);
+    ctx.font = '600 12px "Inter", "PingFang SC", sans-serif';
+    ctx.fillStyle = PALETTE.accent.cyanW0;
+    ctx.textAlign = 'right';
+    ctx.fillText('二维纸面', pPlaneTag.sx, pPlaneTag.sy + 14);
+
+    // Bottom caption
+    ctx.font = '500 12.5px "Inter", "PingFang SC", sans-serif';
+    ctx.fillStyle = cfg.canPass ? PALETTE.accent.emerald : PALETTE.accent.platinum;
+    ctx.textAlign = 'center';
+    const caption =
+      this.thetaDeg < 2
+        ? '平放时：硬币完整落在二维纸面内，太宽过不去'
+        : cfg.canPass
+          ? '旋转 90° 立直：硬币竖直穿过竖直狭缝！'
+          : '刚转几度：纸面只剩一条直径，但翘起的硬币仍撞墙';
+    ctx.fillText(caption, cx, cfg.height - 14);
+  }
+
+  _drawRightSphere4D3D(ctx, cfg) {
+    const cx = cfg.x0 + cfg.width * 0.5;
+    const cy = cfg.height * 0.55;
+    const scale = Math.min(cfg.width * 0.25, cfg.height * 0.30);
+    const project = makeProjector3D(cx, cy, scale, cfg.yaw, cfg.pitch, 6.2);
+
+    // Panel Header
+    ctx.font = '700 14px "Inter", "PingFang SC", sans-serif';
+    ctx.fillStyle = PALETTE.accent.platinum;
+    ctx.textAlign = 'center';
+    ctx.fillText('② 本关 3D 原理动画：圆球沿第四维度 w 立起来', cx, 28);
+
+    // 1. Translucent Glowing 3D Slab representing "我们所在的三维切面" (at w = 0)
+    const planeR = 1.68;
+    const slabThickness = 0.055;
+    drawBox3D(ctx, -planeR, planeR, -1.26, 1.26, -slabThickness, slabThickness, project, {
+      front: 'rgba(77, 230, 211, 0.22)',
+      top: 'rgba(77, 230, 211, 0.13)',
+      side: 'rgba(77, 230, 211, 0.10)',
+      inner: 'rgba(77, 230, 211, 0.18)',
+      stroke: 'rgba(77, 230, 211, 0.68)',
+    });
+
+    // Subtle spatial lattice on our 3D slice slab
+    ctx.strokeStyle = 'rgba(77, 230, 211, 0.18)';
+    ctx.lineWidth = 1;
+    for (const g of [-1.0, -0.5, 0.5, 1.0]) {
+      const a = project(g, -1.26, slabThickness);
+      const b = project(g, 1.26, slabThickness);
+      ctx.beginPath();
+      ctx.moveTo(a.sx, a.sy);
+      ctx.lineTo(b.sx, b.sy);
+      ctx.stroke();
+
+      const c = project(-planeR, g, slabThickness);
+      const d = project(planeR, g, slabThickness);
+      ctx.beginPath();
+      ctx.moveTo(c.sx, c.sy);
+      ctx.lineTo(d.sx, d.sy);
+      ctx.stroke();
+    }
+
+    // 2. 3D Four-Dimensional Monolith Walls spanning vertically along the ENTIRE w number line!
+    const slitGap = 0.17;
+    const wallColors = {
+      front: cfg.canPass ? 'rgba(105, 240, 174, 0.15)' : 'rgba(138, 106, 47, 0.24)',
+      top: cfg.canPass ? 'rgba(105, 240, 174, 0.24)' : 'rgba(196, 152, 68, 0.30)',
+      side: 'rgba(84, 64, 28, 0.18)',
+      inner: cfg.canPass ? 'rgba(105, 240, 174, 0.38)' : 'rgba(255, 246, 214, 0.26)',
+      stroke: cfg.canPass ? 'rgba(105, 240, 174, 0.72)' : 'rgba(225, 185, 105, 0.55)',
+    };
+    drawBox3D(ctx, -1.58, -slitGap, 0.42, 0.68, -1.12, 1.22, project, wallColors);
+    drawBox3D(ctx, slitGap, 1.58, 0.42, 0.68, -1.12, 1.22, project, wallColors);
+
+    // 3. Bold Golden Arrowed Number Line representing "第四维度 w"
+    drawArrowedNumberLine3D(ctx, project, '第四维度 w', -1.24, 1.32);
+
+    // 4. True 3D Shaded Sphere rotating rigidly from our 3D slice into Fourth Dimension w!
+    // Visualized in (X, Y_3d, W_vertical):
+    // Local sphere has radius R along (X_local, Y_local) and subtle thickness along W_local,
+    // rotating rigidly around Y by thetaRad into the W axis — NEVER squashed!
+    const R = 0.96;
+    const cosT = Math.cos(cfg.thetaRad);
+    const sinT = Math.sin(cfg.thetaRad);
+    // Gentle pass-through glide along +Y toward the slit when standing cleanly vertical at 90°!
+    const glideY = cfg.canPass ? Math.sin(this.orbitPhase * 1.9) * 0.24 + 0.16 : 0;
+
+    // 4a. Draw 3D Volumetric Shaded Sphere / Oblate Body (meridian & latitude ribs + glowing radial body)
+    // Compute 3D points of latitude rings of the rotated 3D sphere in (X, Y, W)
+    const bodyColor = cfg.canPass ? '105, 240, 174' : '247, 195, 70';
+    const coreColor = cfg.canPass ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
+
+    // Outer silhouette ellipse of the rotated 3D sphere projected into screen space
+    const center2D = project(0, glideY, 0);
+    const outerLoop = [];
+    const segs = 56;
+    for (let i = 0; i < segs; i += 1) {
+      const a = (i / segs) * Math.PI * 2;
+      const lx = R * Math.cos(a);
+      const ly = R * Math.sin(a);
+      outerLoop.push([lx * cosT, ly + glideY, lx * sinT]);
+    }
+
+    // Soft 3D spherical volume glow centered at sphere origin
+    const rxProj = Math.max(26, R * scale * (0.28 + 0.72 * Math.abs(cosT)));
+    const ryProj = Math.max(26, R * scale * (0.48 + 0.52 * Math.abs(sinT)));
+    const radGlow = ctx.createRadialGradient(
+      center2D.sx - rxProj * 0.22,
+      center2D.sy - ryProj * 0.22,
+      4,
+      center2D.sx,
+      center2D.sy,
+      Math.max(rxProj, ryProj) * 1.05
+    );
+    radGlow.addColorStop(0, `rgba(255, 250, 232, 0.55)`);
+    radGlow.addColorStop(0.45, `rgba(${bodyColor}, 0.28)`);
+    radGlow.addColorStop(1, `rgba(${bodyColor}, 0.04)`);
+
+    // Draw 3D wireframe latitude/longitude shells that genuinely look like a 3D sphere turning into W!
+    // We embed a true 3D sphere (radius R in X_local, Y_local, and visual 3D thickness factor 0.42 in Z_local
+    // that tapers smoothly as it turns into W, while preserving full circular R in all cross-sections!).
+    const visualThick = 0.52 * Math.cos(cfg.thetaRad) ** 2 + 0.14 * Math.sin(cfg.thetaRad) ** 2;
+
+    // Stacked circular cross-section slices along the sphere's tilted axis — visually illustrates
+    // "球被切成了不同的圆被分散放在了 w 轴上"!
+    const sliceLevels = [-0.78, -0.45, 0, 0.45, 0.78];
+    sliceLevels.forEach((u) => {
+      const sliceR = R * Math.sqrt(Math.max(0.02, 1 - u * u));
+      const pts = [];
+      for (let i = 0; i < 40; i += 1) {
+        const a = (i / 40) * Math.PI * 2;
+        const lx = u * R;
+        const ly = sliceR * Math.cos(a);
+        const lz = sliceR * visualThick * Math.sin(a);
+        // Rotate (lx, lz) into (X, W) by thetaRad!
+        const wx = lx * cosT - lz * sinT;
+        const ww = lx * sinT + lz * cosT;
+        pts.push([wx, ly + glideY, ww]);
+      }
+      const isCenterSlice = u === 0;
+      drawPolygon3D(
+        ctx,
+        pts,
+        project,
+        isCenterSlice ? `rgba(77, 230, 211, 0.22)` : `rgba(${bodyColor}, 0.11)`,
+        isCenterSlice ? PALETTE.accent.cyanW0 : `rgba(${bodyColor}, 0.58)`,
+        isCenterSlice ? 2.4 : 1.2
+      );
+    });
+
+    // Equatorial + Meridian 3D rings for unmistakable spherical volume
+    for (const phi of [0, Math.PI * 0.5]) {
+      const mPts = [];
+      for (let i = 0; i < 48; i += 1) {
+        const a = (i / 48) * Math.PI * 2;
+        const lx = R * Math.cos(a);
+        const ly = R * Math.sin(a) * Math.cos(phi);
+        const lz = R * visualThick * Math.sin(a) * Math.sin(phi);
+        const wx = lx * cosT - lz * sinT;
+        const ww = lx * sinT + lz * cosT;
+        mPts.push([wx, ly + glideY, ww]);
+      }
+      drawPolygon3D(ctx, mPts, project, phi === 0 ? radGlow : null, coreColor, phi === 0 ? 2.2 : 1.4);
+    }
+
+    // 4b. Highlight the bright Cyan Cross-Section sitting RIGHT inside "我们所在的三维切面" (w = 0)!
+    const slicePts = [];
+    const sliceXHalf = Math.max(0.04, cfg.sliceSemiX * R);
+    for (let i = 0; i < 40; i += 1) {
+      const a = (i / 40) * Math.PI * 2;
+      slicePts.push([sliceXHalf * Math.cos(a), R * Math.sin(a) + glideY, slabThickness + 0.01]);
+    }
+    drawPolygon3D(
+      ctx,
+      slicePts,
+      project,
+      'rgba(77, 230, 211, 0.42)',
+      PALETTE.accent.cyanW0,
+      2.6
+    );
+
+    // 4c. Outer 4D X-extent indicator ticks showing collision vs clear slit
+    const xSpan = cfg.xMax * R;
+    ctx.strokeStyle = cfg.canPass ? PALETTE.accent.emerald : 'rgba(255, 107, 107, 0.78)';
     ctx.lineWidth = 1.4;
     ctx.setLineDash([4, 3]);
     for (const s of [-1, 1]) {
+      const dTop = project(s * xSpan, glideY, 1.05);
+      const dBot = project(s * xSpan, glideY, -1.05);
       ctx.beginPath();
-      ctx.moveTo(cx + s * slitHalfPx, 34);
-      ctx.lineTo(cx + s * slitHalfPx, cfg.height - 30);
+      ctx.moveTo(dTop.sx, dTop.sy);
+      ctx.lineTo(dBot.sx, dBot.sy);
       ctx.stroke();
     }
     ctx.setLineDash([]);
 
-    // Unit circle (rigid radius R = 1.00m proof)
-    ctx.strokeStyle = 'rgba(247, 195, 70, 0.25)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Primary hyperplane line (Z=0 or W=0)
-    ctx.strokeStyle = 'rgba(77, 230, 211, 0.75)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(cfg.x0 + 18, cy);
-    ctx.lineTo(cfg.x0 + cfg.width - 18, cy);
-    ctx.stroke();
-
-    // Extra dimension axis (+Z or +W)
-    ctx.strokeStyle = 'rgba(247, 195, 70, 0.45)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx, 34);
-    ctx.lineTo(cx, cfg.height - 30);
-    ctx.stroke();
-
-    // Rigid rotated coin / sphere bar (constant diameter 2R — NEVER squashed!)
-    const dx = Math.cos(cfg.thetaRad) * R;
-    const dy = Math.sin(cfg.thetaRad) * R;
-
-    // X-span collision drop brackets
-    const spanPx = cfg.xMax * R;
-    ctx.strokeStyle = cfg.canPass ? PALETTE.accent.emerald : 'rgba(255, 107, 107, 0.65)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 3]);
-    for (const s of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(cx + s * spanPx, cy - R - 4);
-      ctx.lineTo(cx + s * spanPx, cy + R + 4);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    ctx.strokeStyle = cfg.canPass ? PALETTE.accent.emerald : cfg.accentHex;
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx - dx, cy + dy);
-    ctx.lineTo(cx + dx, cy - dy);
-    ctx.stroke();
-
-    // Bright slice intersection highlight right on the horizontal plane (Z=0 or W=0)
-    const slicePx = Math.max(3, cfg.sliceSemiX * R);
-    ctx.strokeStyle = PALETTE.accent.platinum;
-    ctx.lineWidth = 5.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - slicePx, cy);
-    ctx.lineTo(cx + slicePx, cy);
-    ctx.stroke();
-
-    // Labels
-    ctx.font = '600 10px "JetBrains Mono", ui-monospace, monospace';
-    ctx.fillStyle = PALETTE.accent.goldWPos;
-    ctx.textAlign = 'left';
-    ctx.fillText(cfg.extraAxisLabel, cx + 8, 45);
-
+    // 5. Crisp Slab Label: "我们所在的三维切面" (NEVER "W=0 切片"!)
+    const pSlabLabel = project(1.66, -1.24, 0.06);
+    ctx.font = '700 13px "Inter", "PingFang SC", sans-serif';
     ctx.fillStyle = PALETTE.accent.cyanW0;
     ctx.textAlign = 'right';
-    ctx.fillText(cfg.planeLabel, cfg.x0 + cfg.width - 20, cy - 6);
+    ctx.fillText('我们所在的三维切面', pSlabLabel.sx + 28, pSlabLabel.sy + 14);
 
-    ctx.font = '500 11px "Inter", "PingFang SC", sans-serif';
+    // Bottom intuitive caption
+    ctx.font = '500 12.5px "Inter", "PingFang SC", sans-serif';
     ctx.fillStyle = cfg.canPass ? PALETTE.accent.emerald : PALETTE.accent.platinum;
     ctx.textAlign = 'center';
-    ctx.fillText(cfg.sliceCaption, cx, cfg.height - 10);
+    const caption =
+      this.thetaDeg < 2
+        ? '未旋转时：圆球完整平放在我们所在的三维切面中'
+        : cfg.canPass
+          ? '旋转 90° 立入第四维度 w：球体完整未压扁，轻松滑过狭缝！'
+          : `倾斜中：切面只剩薄圆，但球本体跨度仍有 ${cfg.xMax.toFixed(2)}m 会撞墙`;
+    ctx.fillText(caption, cx, cfg.height - 14);
   }
 }

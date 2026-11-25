@@ -15,9 +15,9 @@ import { LEVEL14_CONFIG, computeOblateSpheroidSliceAtW } from '../core/sanctuary
 import { PALETTE } from './phase-materials.js';
 
 const SLICES = [
-  { w: -1.8, label: 'W = −1.8', name: '星轨', color: PALETTE.accent.blueWNeg },
-  { w: 0.0, label: 'W =  0.0', name: '青苍', color: PALETTE.accent.cyanW0 },
-  { w: 1.8, label: 'W = +1.8', name: '流金', color: PALETTE.accent.goldWPos },
+  { w: -1.8, label: 'w = −1.8', name: '星轨', color: PALETTE.accent.blueWNeg },
+  { w: 0.0, label: '三维切面', name: '青苍', color: PALETTE.accent.cyanW0 },
+  { w: 1.8, label: 'w = +1.8', name: '流金', color: PALETTE.accent.goldWPos },
 ];
 
 export class TacticalConsole {
@@ -63,7 +63,7 @@ export class TacticalConsole {
     }
     if (this.rulerReadoutEl) {
       const sign = w >= 0 ? '+' : '';
-      this.rulerReadoutEl.textContent = `W ${sign}${w.toFixed(2)}`;
+      this.rulerReadoutEl.textContent = `w ${sign}${w.toFixed(2)}`;
     }
 
     if (this.collapsed || !this.canvas || !this.ctx) return;
@@ -91,9 +91,9 @@ export class TacticalConsole {
     const cardY = 22;
     const cardH = cssH - 36;
 
-    // Map hall X in [-6.5, +6.5], Z in [-7.8, +5.2] into card coordinates
+    // Map hall X in [-6.5, +6.5], Z in [-7.8, +7.2] into card coordinates
     const zMin = -7.8;
-    const zMax = 5.2;
+    const zMax = 7.2;
     const xSpan = 12.6;
 
     SLICES.forEach((slice, idx) => {
@@ -118,36 +118,50 @@ export class TacticalConsole {
       const mapX = (wx) => x0 + cardW * 0.5 + (wx / xSpan) * (cardW - 8);
       const mapZ = (wz) => cardY + cardH - ((wz - zMin) / (zMax - zMin)) * (cardH - 8) - 4;
 
-      // North & South Pedestals
+      // North & South Pedestals + North Teleportation Pad
       const southY = mapZ(LEVEL14_CONFIG.orbStartZ);
       const northY = mapZ(LEVEL14_CONFIG.orbTargetZ);
+      const portalY = mapZ(LEVEL14_CONFIG.teleporterZ);
       ctx.fillStyle = 'rgba(77, 230, 211, 0.32)';
       ctx.beginPath();
-      ctx.arc(mapX(0), southY, 4, 0, Math.PI * 2);
+      ctx.arc(mapX(0), southY, 3.8, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = state.completed ? PALETTE.accent.emerald : 'rgba(247, 195, 70, 0.45)';
+      ctx.fillStyle = state.completed ? PALETTE.accent.platinum : 'rgba(247, 195, 70, 0.45)';
       ctx.beginPath();
-      ctx.arc(mapX(0), northY, 4.5, 0, Math.PI * 2);
+      ctx.arc(mapX(0), northY, 4.0, 0, Math.PI * 2);
       ctx.fill();
 
-      // All-W Monolith Walls (SOLID across ALL THREE slices!)
+      ctx.strokeStyle = state.completed ? PALETTE.accent.emerald : 'rgba(105, 240, 174, 0.28)';
+      ctx.lineWidth = state.completed ? 1.6 : 1;
+      ctx.beginPath();
+      ctx.arc(mapX(0), portalY, 5.2, 0, Math.PI * 2);
+      ctx.stroke();
+      if (state.completed) {
+        ctx.fillStyle = 'rgba(105, 240, 174, 0.35)';
+        ctx.fill();
+      }
+
+      // All-W Monolith Walls (part wide open once unlocked by Passing Orb key!)
       const wallTop = mapZ(LEVEL14_CONFIG.wallZMax);
       const wallBot = mapZ(LEVEL14_CONFIG.wallZMin);
       const wallH = Math.max(4, wallBot - wallTop);
-      const slitGapPx = 3; // Visible crisp hairline indicator
+      const slitGapPx = state.completed ? cardW * 0.42 : 3;
 
       ctx.fillStyle = isActive ? '#6A5328' : '#4A3B1E';
-      ctx.fillRect(x0 + 3, wallTop, cardW * 0.5 - slitGapPx * 0.5 - 3, wallH);
+      const leftWallW = Math.max(2, cardW * 0.5 - slitGapPx * 0.5 - 3);
+      ctx.fillRect(x0 + 3, wallTop, leftWallW, wallH);
       ctx.fillRect(
         x0 + cardW * 0.5 + slitGapPx * 0.5,
         wallTop,
-        cardW * 0.5 - slitGapPx * 0.5 - 3,
+        leftWallW,
         wallH
       );
-      // Platinum hairline slit seam
-      ctx.fillStyle = PALETTE.accent.platinum;
-      ctx.fillRect(x0 + cardW * 0.5 - 0.6, wallTop, 1.2, wallH);
+      if (!state.completed) {
+        // Platinum hairline slit seam
+        ctx.fillStyle = PALETTE.accent.platinum;
+        ctx.fillRect(x0 + cardW * 0.5 - 0.6, wallTop, 1.2, wallH);
+      }
 
       // Exact Orb Cross-Section in this W slice!
       const orbSlice = computeOblateSpheroidSliceAtW(state.thetaRad, slice.w);

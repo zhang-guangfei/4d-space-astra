@@ -44,6 +44,8 @@ export const LEVEL14_CONFIG = Object.freeze({
   orbMinZ: -4.2,
   orbMaxZ: 3.8,
   pedestalSnapRadiusZ: 0.45,
+  teleporterZ: 6.4, // North Next-Level Teleportation Pad Z (walkable once monolith walls open!)
+  teleporterRadius: 1.35,
   playerWMin: -2.2,
   playerWMax: 2.2,
   grabInteractDistance: 4.2,
@@ -193,6 +195,7 @@ export class Level14HairlineSlitState {
     this.hasPassedSlit = false;
     this.hasAttemptedExpandInsideSlit = false;
     this.completed = false;
+    this.enteredTeleporter = false;
 
     // 3-beat progression: 0 (initial) -> 1 (奇观) -> 2 (把玩) -> 3 (运用/通关)
     this.beat = 0;
@@ -266,9 +269,11 @@ export class Level14HairlineSlitState {
   /**
    * Check whether a 3D player position (x, z) collides with the all-W monolith walls.
    * Monolith walls exist for ALL W slices: Z in [-1.2, +1.2], |X| >= slitHalfWidth.
-   * Player body radius ~0.35m cannot squeeze through the 0.164m slit at ANY W!
+   * Once the Passing Orb key is restored on the North Pedestal (`this.completed`),
+   * the twin monolith walls part wide open so the player can walk straight through!
    */
   isPlayerBlockedByMonolith(x, z, playerRadius = 0.36) {
+    if (this.completed) return false;
     const inWallZ = z + playerRadius > this.config.wallZMin && z - playerRadius < this.config.wallZMax;
     if (!inWallZ) return false;
     // Even centered at X=0, playerRadius (0.36m) > slitHalfWidth (0.082m), so monolith blocks player in ALL W!
@@ -294,14 +299,15 @@ export class Level14HairlineSlitState {
       hitBoundary:
         (deltaW < 0 && next <= this.config.playerWMin + 1e-6) ||
         (deltaW > 0 && next >= this.config.playerWMax - 1e-6),
-      monolithStillSolid: true,
+      monolithStillSolid: !this.completed,
     };
   }
 
   /**
    * Move player in XZ plane (walk mode), respecting monolith all-W wall collision & hall bounds.
+   * After victory, monolith opens so player can walk north straight onto the Teleportation Pad!
    */
-  movePlayerXZ(dx, dz, hallHalfX = 6.2, hallMinZ = -8.5, hallMaxZ = 6.2) {
+  movePlayerXZ(dx, dz, hallHalfX = 6.2, hallMinZ = -8.5, hallMaxZ = 7.4) {
     const currX = this.playerPos[0];
     const currZ = this.playerPos[2];
     let targetX = clamp(currX + dx, -hallHalfX, hallHalfX);
@@ -322,14 +328,32 @@ export class Level14HairlineSlitState {
       this.hasBlockedAtWall = true;
       this.lastBlockEvent = {
         type: 'all_w_wall',
-        message: '巨墙在所有 W 切片均实体封死',
+        message: '四维巨墙贯穿整个 w 轴，靠平移无法绕过',
       };
       this._updateBeats();
     }
 
     this.playerPos[0] = targetX;
     this.playerPos[2] = targetZ;
-    return { x: targetX, z: targetZ, blockedByWall };
+
+    let justEnteredTeleporter = false;
+    if (this.completed) {
+      const distToPortal = Math.hypot(targetX, targetZ - this.config.teleporterZ);
+      if (distToPortal <= this.config.teleporterRadius) {
+        if (!this.enteredTeleporter) {
+          this.enteredTeleporter = true;
+          justEnteredTeleporter = true;
+        }
+      }
+    }
+
+    return {
+      x: targetX,
+      z: targetZ,
+      blockedByWall,
+      enteredTeleporter: this.enteredTeleporter,
+      justEnteredTeleporter,
+    };
   }
 
   canGrabOrb() {
@@ -348,7 +372,7 @@ export class Level14HairlineSlitState {
         return { grabbed: false, reason: 'too_far' };
       }
       this.grabbed = true;
-      // Snap player W cleanly to 0 in Grab Stage so main view honors pure W=0 slice
+      // Align player W cleanly to 0 in Grab Stage so main view shows our 3D slice
       this.playerPos[3] = 0;
       if (this.beat < 1) {
         this.beat = 1;
@@ -550,24 +574,25 @@ export class Level14HairlineSlitState {
     if (this.viewMode === 'side_xzw') {
       return {
         mode: 'side_xzw',
-        title: `侧面视图 (XZW) + 四维包络示意 · 刚体半径恒为 ${ext.rigidRadiusInvariant.toFixed(2)}m`,
-        detail: `θ = ${this.thetaDeg.toFixed(1)}° | 切片厚 aX=${sl0.semiX.toFixed(3)}m · 四维总宽 xMax=${ext.xMax.toFixed(3)}m`,
+        title: `第四维度侧视图 · 球体半径恒为 ${ext.rigidRadiusInvariant.toFixed(2)}m（从未压扁）`,
+        detail: `转角 θ = ${this.thetaDeg.toFixed(1)}° | 当前切面半厚 ${sl0.semiX.toFixed(3)}m · 四维总宽 ${ext.xMax.toFixed(3)}m`,
       };
     }
     if (this.grabbed) {
       return {
         mode: 'slice',
-        title: '纯净三维切片 W=0（无四维投影叠加）',
-        detail: `θ = ${this.thetaDeg.toFixed(1)}° | 切片半厚 aX=${sl0.semiX.toFixed(3)}m · 四维总宽 xMax=${ext.xMax.toFixed(3)}m（缝 0.082m）`,
+        title: '我们所在的三维切面（真实截面）',
+        detail: `转角 θ = ${this.thetaDeg.toFixed(1)}° | 切面半厚 ${sl0.semiX.toFixed(3)}m · 四维总宽 ${ext.xMax.toFixed(3)}m（缝 0.082m）`,
       };
     }
     const w = this.playerPos[3];
-    const layerName = w > 0.6 ? '流金切片' : w < -0.6 ? '星轨切片' : '青苍切片';
     const sign = w >= 0 ? '+' : '';
     return {
       mode: 'walk',
-      title: `当前切片 W = ${sign}${w.toFixed(2)} · ${layerName}`,
-      detail: '一线天巨墙在所有 W 切片均实体存在',
+      title: `我们所在的三维切面 · 第四维坐标 w = ${sign}${w.toFixed(2)}`,
+      detail: this.completed
+        ? '四维巨墙已打开，请前行踏上北侧传送台进入下一关'
+        : '四维巨墙贯穿整个 w 轴，思考如何让球穿过狭缝',
     };
   }
 }

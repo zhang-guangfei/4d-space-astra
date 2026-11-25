@@ -210,21 +210,22 @@ body {
   color: rgba(246, 244, 238, 0.25);
 }
 
-/* Top-Center: Single-Line Character Voice Subtitle */
+/* Top-Center: Clean Character Voice Subtitle Card */
 .subtitle-bar {
   position: absolute;
-  top: 60px;
-  left: 50%;
+  top: 62px;
+  left: 52%;
   transform: translate(-50%, -8px);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  max-width: min(560px, 50vw);
-  padding: 8px 16px;
-  background: rgba(16, 13, 9, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  max-width: min(500px, 44vw);
+  padding: 9px 15px;
+  background: rgba(16, 13, 9, 0.9);
   border: 1px solid var(--border-bronze);
-  border-radius: 6px;
-  backdrop-filter: blur(8px);
+  border-radius: 7px;
+  backdrop-filter: blur(10px);
   opacity: 0;
   transition: opacity 0.32s ease, transform 0.32s ease;
 }
@@ -234,8 +235,14 @@ body {
   transform: translate(-50%, 0);
 }
 
+.subtitle-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .subtitle-speaker {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
   color: var(--accent-gold);
@@ -253,8 +260,8 @@ body {
 }
 
 .subtitle-text {
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 13.5px;
+  line-height: 1.48;
   color: var(--text-primary);
 }
 
@@ -808,17 +815,19 @@ body {
   opacity: 0.78;
 }
 
-/* Interactive Opening Principle Guide Card */
+/* Interactive Principle Guide Card — Enlarged for Clear 3D Perspective Animation */
 .principle-card {
-  width: min(820px, 94vw);
+  width: min(1160px, 95vw);
+  max-height: 94vh;
+  padding: 18px 24px;
 }
 
 .principle-canvas {
   display: block;
   width: 100%;
-  height: 220px;
-  margin-top: 14px;
-  border-radius: 6px;
+  height: clamp(290px, 44vh, 390px);
+  margin-top: 12px;
+  border-radius: 8px;
   border: 1px solid var(--border-bronze);
   background: #120f0b;
 }
@@ -827,17 +836,17 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 10px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-subtle);
 }
 
 .principle-slider-row input[type="range"] {
   flex: 1;
-  min-width: 150px;
+  min-width: 180px;
   accent-color: var(--accent-gold);
 }
 
@@ -845,37 +854,71 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .principle-point {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 9px 12px;
   border-radius: 6px;
-  background: rgba(29, 25, 18, 0.72);
+  background: rgba(29, 25, 18, 0.78);
   border: 1px solid var(--border-subtle);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.48;
   color: var(--text-muted);
 }
 
 .principle-point strong {
   color: var(--accent-platinum);
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .principle-point code {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent-cyan);
-  background: rgba(77, 230, 211, 0.08);
-  padding: 1px 4px;
+  background: rgba(77, 230, 211, 0.09);
+  padding: 1px 5px;
   border-radius: 3px;
 }
 
+/* North Teleportation Pad Arrival Card */
+.teleporter-card {
+  width: min(560px, 92vw);
+  text-align: center;
+  border-color: rgba(105, 240, 174, 0.65);
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.8), 0 0 36px rgba(105, 240, 174, 0.16);
+}
+
+.teleporter-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(105, 240, 174, 0.14);
+  border: 1px solid rgba(105, 240, 174, 0.55);
+  color: var(--accent-emerald);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.teleporter-copy {
+  margin: 14px 0 18px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.teleporter-copy strong {
+  color: var(--accent-platinum);
+}
+
 @media (max-width: 900px) {
+  .principle-canvas {
+    height: 290px;
+  }
   .principle-points {
     grid-template-columns: 1fr;
   }
