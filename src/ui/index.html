@@ -94,6 +94,12 @@
       <div id="reticle-prompt" class="reticle-prompt"></div>
     </div>
 
+    <div id="goal-marker" class="goal-marker" hidden>
+      <figure><img src="./north-pedestal.jpg" alt="带金色光环的空底座" width="384" height="238">
+        <figcaption>墙后 · 金色底座</figcaption>
+      </figure>
+    </div>
+
     <!-- Floating Visual Cue A: Scroll-Wheel Ownership Handoff (glides from w-ruler to orb on E grab!) -->
     <div id="wheel-handoff-cue" class="wheel-handoff-cue" aria-hidden="true">
       <span class="wheel-glyph">⇕</span>
@@ -116,16 +122,18 @@
     <section id="side-view-panel" class="side-view-panel" aria-label="第四维度侧视图">
       <div class="panel-header">
         <span class="panel-title">第四维侧视</span>
-        <button id="btn-compare-layers" class="mini-key-btn" type="button" hidden>
-          <span class="keycap">C</span>
-          <span id="compare-layer-label">查看相邻层</span>
-        </button>
         <button id="btn-tab-view" class="mini-key-btn" type="button" title="按 Tab 切换第四维度侧视图">
           <span class="keycap">Tab</span>
           <span id="btn-tab-label">收起</span>
         </button>
       </div>
       <canvas id="side-view-canvas" class="side-view-canvas"></canvas>
+      <div class="layer-controls" role="group" aria-label="沿 W 轴观察">
+        <button id="btn-w-minus" class="mini-key-btn" type="button" aria-label="沿 W 轴负向移动" title="沿 W 轴负向移动">−W</button>
+        <output id="observe-w" class="mono" aria-label="当前观察位置">W +0.00</output>
+        <button id="btn-w-plus" class="mini-key-btn" type="button" aria-label="沿 W 轴正向移动" title="沿 W 轴正向移动">+W</button>
+        <button id="btn-w-origin" class="mini-key-btn" type="button"><span class="keycap">C</span>回原层</button>
+      </div>
       <div class="panel-caption side-legend">
         <span><i class="slice-symbol" aria-hidden="true"></i> 青色实心面 · 当前层的球身</span>
         <span><i class="outline-symbol" aria-hidden="true"></i> 金色外轮廓 · 整颗球所占的范围</span>

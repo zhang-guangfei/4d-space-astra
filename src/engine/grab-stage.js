@@ -7,7 +7,7 @@
  *    directly to the Side View's rigid 2.00m diameter bar.
  * 3. Architectural Slit Continuity: Side View slit walls echo the 3D cathedral's brushed bronze jaws,
  *    Vernier calibration ticks, and platinum/emerald glowing lips.
- * 4. Live Collision-Layer Evidence: Glides the horizontal observation line cleanly to `state.inspectW`
+ * 4. Live Collision-Layer Evidence: Tracks the player's W coordinate
  *    and illuminates the exact wall-contact point where the protruding orb body hits the solid monolith!
  */
 
@@ -164,8 +164,8 @@ export class GrabStageController {
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = this.canvas.getBoundingClientRect();
-    const cssW = Math.max(280, Math.round(rect.width));
-    const cssH = Math.max(230, Math.round(rect.height));
+    const cssW = Math.max(1, Math.round(rect.width));
+    const cssH = Math.max(1, Math.round(rect.height));
     if (this.canvas.width !== cssW * dpr || this.canvas.height !== cssH * dpr) {
       this.canvas.width = cssW * dpr;
       this.canvas.height = cssH * dpr;
@@ -185,13 +185,13 @@ export class GrabStageController {
     const toPxX = (x) => cx + x * scale;
     const toPxW = (w) => cy - w * scale;
 
-    const activeW = state.grabbed ? state.inspectW : state.playerPos[3];
-    const activeSlice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
-    const overlapX = state.canCompareLayers ? state.getWallOverlapX(activeSlice) : null;
+    const activeW = state.playerPos[3];
+    const activeSlice = state.getSliceAtPlayerW();
+    const overlapX = state.observedWallOverlapX;
     const activeSliceY = Math.max(24, Math.min(cssH - 28, toPxW(activeW)));
     const isBlade = state.isBladeThinEnough();
     const inWallZ = state.isOrbOverlappingWallZ();
-    const isInspectingOtherW = state.grabbed && state.inspectModeActive && Math.abs(state.inspectW) > 0.01;
+    const isInspectingOtherW = activeW !== 0;
 
     // 1. Subtle coordinate grid
     ctx.strokeStyle = 'rgba(138, 106, 47, 0.13)';
@@ -260,7 +260,7 @@ export class GrabStageController {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 4. Primary Axes: Horizontal "我们所在的三维切面" (or gliding "相邻层观察") & Arrowed "第四维度 w"
+    // 4. Current observation layer and orthogonal W axis.
     if (Math.abs(activeW) > 0.02) {
       // Faint original layer line at center
       ctx.strokeStyle = 'rgba(77, 230, 211, 0.28)';
@@ -319,7 +319,7 @@ export class GrabStageController {
 
     ctx.strokeStyle = isBlade
       ? 'rgba(105, 240, 174, 0.68)'
-      : this.blockFlash > 0.05 || isInspectingOtherW
+      : this.blockFlash > 0.05 || overlapX !== null
         ? 'rgba(255, 107, 107, 0.78)'
         : 'rgba(247, 195, 70, 0.45)';
     ctx.lineWidth = 1.1;
@@ -356,7 +356,7 @@ export class GrabStageController {
     ctx.lineTo(circTargetX, circTargetY);
     ctx.stroke();
 
-    // 6. Highlight intersection segment on the active observation layer (w = 0 or inspectW!)
+    // 6. Highlight the segment intersected by the player's current layer.
     if (activeSlice.intersects) {
       ctx.strokeStyle = PALETTE.accent.cyanW0;
       ctx.lineWidth = 5;
@@ -388,22 +388,6 @@ export class GrabStageController {
       }
     }
 
-    // If bumped while Side View already open at w=0, also pulse protruding △ / ○ wall overlap!
-    if (this.blockFlash > 0.05 && !isBlade && !isInspectingOtherW) {
-      for (const [ex, ey] of [
-        [triTargetX, triTargetY],
-        [circTargetX, circTargetY],
-      ]) {
-        if (Math.abs(ex - cx) > slitHalfPx) {
-          ctx.strokeStyle = PALETTE.accent.amberCoral;
-          ctx.lineWidth = 2.2;
-          ctx.beginPath();
-          ctx.arc(ex, ey, 11 + this.blockFlash * 5, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-    }
-
     // 7. Matching Hollow △ (Left) & ○ (Right) Diameter Markers with smooth fly-in landing animation!
     const tEase = 1 - Math.pow(1 - this.markerEntryProgress, 3);
     const triX = lerp(cx - 46, triTargetX, tEase);
@@ -425,7 +409,7 @@ export class GrabStageController {
     ctx.fillStyle = PALETTE.accent.cyanW0;
     ctx.textAlign = 'right';
     ctx.fillText(
-      isInspectingOtherW ? '相邻层观察' : '我们所在的三维切面',
+      isInspectingOtherW ? `当前 W ${activeW.toFixed(2)}` : '原层',
       cssW - 12,
       Math.max(36, activeSliceY - 9)
     );
@@ -435,14 +419,14 @@ export class GrabStageController {
     ctx.textAlign = 'center';
     ctx.fillStyle = isBlade
       ? PALETTE.accent.emerald
-      : isInspectingOtherW
+      : overlapX !== null
         ? '#FFD1D1'
         : PALETTE.accent.platinum;
     const footerMsg = isBlade
       ? '两端都已收进缝内，可以往前推了'
       : overlapX !== null
         ? '红圈标出这一层越过缝边的球身'
-        : '△ 和 ○ 标出球的两端，两点之间的距离始终一样';
+        : !activeSlice.intersects ? '这一层没有切到球身' : '△ 和 ○ 标出同一颗球的两端';
     ctx.fillText(footerMsg, cx, cssH - 8);
     ctx.textAlign = 'left';
 

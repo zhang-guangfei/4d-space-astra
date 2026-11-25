@@ -399,6 +399,45 @@ body {
   transform: translateY(0);
 }
 
+.goal-marker {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3px;
+  border: 1px solid var(--accent-gold);
+  border-radius: 50%;
+  background: #20180d;
+  pointer-events: none;
+}
+
+.goal-marker::before {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 5px;
+  width: 35px;
+  border-top: 1px dashed var(--accent-gold);
+  transform: rotate(-28deg);
+  transform-origin: left;
+}
+
+.goal-marker figure {
+  position: absolute;
+  bottom: 19px;
+  left: 35px;
+  width: clamp(104px, 12vw, 136px);
+  margin: 0;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid var(--border-bronze);
+  background: #1c170f;
+}
+
+.goal-marker img { display: block; width: 100%; height: auto; }
+.goal-marker figcaption { padding: 4px; text-align: center; white-space: nowrap; color: var(--accent-gold); font-size: 12px; }
+.goal-marker.opens-left figure { left: auto; right: 35px; }
+.goal-marker.opens-left::before { left: auto; right: 5px; transform: rotate(28deg); transform-origin: right; }
+
 /* Floating Scroll-Wheel Handoff Cue (glides from right w-ruler to orb on E grab!) */
 .wheel-handoff-cue {
   position: absolute;
@@ -556,7 +595,7 @@ body {
 }
 
 .side-view-panel.is-expanded {
-  width: min(420px, 42vw);
+  width: clamp(238px, 32vw, 360px);
   border-color: var(--accent-gold);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.58);
 }
@@ -612,8 +651,20 @@ body {
 }
 
 .side-view-panel.is-expanded .side-view-canvas {
-  height: 300px;
+  height: clamp(140px, 32vh, 240px);
 }
+
+.layer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.layer-controls .mini-key-btn { min-height: 26px; }
+.layer-controls .mini-key-btn:disabled { opacity: 0.45; cursor: default; }
+.layer-controls output { color: var(--accent-cyan); font-size: 12px; }
 
 .panel-caption {
   padding: 6px 10px;
@@ -1074,6 +1125,12 @@ body {
 }
 
 @media (max-width: 900px) {
+  .subtitle-bar {
+    left: auto;
+    right: 18px;
+    transform: translateY(-8px);
+  }
+  .subtitle-bar.is-visible { transform: translateY(0); }
   .principle-canvas {
     height: 290px;
   }

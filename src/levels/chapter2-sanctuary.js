@@ -1221,28 +1221,21 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * Project the Passing Orb's 3D world center into 2D screen viewport coordinates
-   * so subtle floating cues ("留在这一层的部分" / scroll handoff) anchor naturally beside the orb.
+   * Project a scene landmark into CSS pixels for its HUD callout.
    */
-  getOrbScreenAnchor(camera) {
-    if (!camera || !this.orbRoot) return null;
+  getScreenAnchor(mesh) {
     const B = this.B;
-    const engine = this.scene.getEngine();
-    const w = engine.getRenderWidth();
-    const h = engine.getRenderHeight();
-    if (!w || !h) return null;
-    const pos = this.orbRoot.getAbsolutePosition();
-    const viewport = camera.viewport.toGlobal(w, h);
+    const rect = this.scene.getEngine().getRenderingCanvas().getBoundingClientRect();
+    const viewport = this.camera.viewport.toGlobal(rect.width, rect.height);
     const projected = B.Vector3.Project(
-      pos,
+      mesh.getAbsolutePosition(),
       B.Matrix.Identity(),
-      this.scene.getTransformMatrix(),
+      this.camera.getTransformationMatrix(),
       viewport
     );
-    const dpr = engine.getHardwareScalingLevel ? 1 / engine.getHardwareScalingLevel() : 1;
     return {
-      x: projected.x / dpr,
-      y: projected.y / dpr,
+      x: projected.x + rect.left,
+      y: projected.y + rect.top,
       inFront: projected.z >= 0 && projected.z <= 1,
     };
   }
@@ -1270,18 +1263,17 @@ export class Level14SanctuaryScene {
     const monolithEased = 1 - Math.pow(1 - this.monolithOpenProgress, 3);
 
     const ext = state.getExtents();
-    // In Grab Stage, observe at `inspectW` (normally 0, glides to colliding neighboring layer on Tab after tilted bump!)
-    const slice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
+    const slice = state.getSliceAtPlayerW();
     const isBlade = state.isBladeThinEnough();
     const distFrom0 = Math.min(
       Math.abs(state.thetaDeg % 180),
       Math.abs(180 - (state.thetaDeg % 180))
     );
     const isTilted = distFrom0 > 3.0;
-    const isInspectingOtherW = state.grabbed && state.inspectModeActive && Math.abs(state.inspectW) > 0.01;
+    const activeW = state.playerPos[3];
+    const isInspectingOtherW = activeW !== 0;
 
     // 1. Flanking W-layer reference arches (solid when player W matches, ghost otherwise)
-    const activeW = state.grabbed ? state.inspectW : state.playerPos[3];
     for (const grp of this.wLayerGroups) {
       applyPhaseToMaterial(grp.mat, activeW - grp.w, { solidThreshold: 0.55, ghostAlpha: 0.34 });
     }
@@ -1289,7 +1281,7 @@ export class Level14SanctuaryScene {
     // 2. Passing Orb exact 4D geometry (Option A: eps=0.001m pure 3D slice default!)
     const hoverOffset = state.completed
       ? monolithEased * 2.15 + Math.sin(this.elapsed * 2.2) * 0.06
-      : Math.sin(this.elapsed * 2.0) * 0.04;
+      : state.grabbed || state.hasInspectableContact ? 0 : Math.sin(this.elapsed * 2.0) * 0.04;
     this.orbRoot.position.set(0, LEVEL14_CONFIG.orbCenterY + hoverOffset, state.orbZ);
     this.orbLight.position.set(0, LEVEL14_CONFIG.orbCenterY + hoverOffset + 0.25, state.orbZ);
 
@@ -1316,7 +1308,7 @@ export class Level14SanctuaryScene {
     // 2b. Horizontal Diameter Polar Markers △ (-X) & ○ (+X) on the 3D sphere:
     // Visible at 0°, smoothly drift outward & fade out over 2°..15° when tilted (reversibly return at 0°!)
     const poleFade = Math.max(0, Math.min(1, 1 - (distFrom0 - 2.0) / 13.0));
-    const showSlicePoles = !state.completed && poleFade > 0.04 && state.viewMode !== 'side_xzw';
+    const showSlicePoles = !state.completed && !isInspectingOtherW && poleFade > 0.04 && state.viewMode !== 'side_xzw';
     this.orbPoleTri.setEnabled(showSlicePoles);
     this.orbPoleCirc.setEnabled(showSlicePoles);
     if (showSlicePoles) {
@@ -1342,7 +1334,7 @@ export class Level14SanctuaryScene {
       this.orbProjCirc.position.set(beaconX, 0, 0);
       const beaconHex = isBlade
         ? PALETTE.accent.emerald
-        : this.contactHighlight > 0.05 || isInspectingOtherW
+        : this.contactHighlight > 0.05 || state.observedWallOverlapX !== null
           ? PALETTE.accent.amberCoral
           : PALETTE.accent.goldWPos;
       this.projBeaconMat.albedoColor = B.Color3.FromHexString(beaconHex);
@@ -1372,7 +1364,7 @@ export class Level14SanctuaryScene {
     this.orbLight.diffuse = accentColor;
 
     // Hide decorative YZ plane halo once tilted (> 3°) so it NEVER reads as a solid outer hoop!
-    this.yzPlaneHalo.setEnabled(state.grabbed && !state.completed && !isTilted);
+    this.yzPlaneHalo.setEnabled(state.grabbed && !state.completed && !isTilted && !isInspectingOtherW);
     if (state.grabbed && !isTilted) {
       const pulse = 0.30 + Math.sin(this.elapsed * 3.0) * 0.03;
       this.yzHaloMat.alpha = Math.min(0.34, Math.max(0.30, pulse));
@@ -1387,7 +1379,7 @@ export class Level14SanctuaryScene {
     }
 
     // 4. Focused Collision Contact Patch + Slit Edge Feedback (never blind the player with a whole-wall flash!)
-    const contactX = state.canCompareLayers ? state.getWallOverlapX(slice) : null;
+    const contactX = state.observedWallOverlapX;
     this.contactPatchMesh.isVisible = contactX !== null;
     if (contactX !== null) {
       const northFace = state.orbZ > 0;

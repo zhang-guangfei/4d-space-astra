@@ -134,7 +134,7 @@ export const LEVEL_HINTS = Object.freeze({
     name: '发丝裂缝',
     opening: {
       speaker: 'tomb',
-      text: '把这颗球送到那边的底座上。',
+      text: '把眼前的青色球送到墙后的金色底座上。',
     },
     tiers: [
       {
@@ -201,13 +201,19 @@ export const LEVEL14_PHASE_HINTS = Object.freeze({
     { speaker: 'tomb', text: '按 E 抓住球后，拨动鼠标滚轮看看球会发生什么变化。' },
     { speaker: 'tomb', text: '走近按 E 抓住球，用滚轮把它在第四维转满 90 度立起来，再按 W 推过亮缝。' },
   ],
+  find_orb_layer: [
+    { speaker: 'tomb', text: '这一层没有切到球身。按 C 回原层，就能重新看见它。' },
+  ],
+  north_reconnect: [
+    { speaker: 'tomb', text: '球留在金色底座上了。按 E 重新操控它，再把它转回底座的形状。' },
+  ],
   grabbed_flat: [
     { speaker: 'tomb', text: '在三维里转它，球的宽度一点也没变。试试拨动鼠标滚轮。' },
     { speaker: 'tomb', text: '想象一枚平放在纸面上的硬币——怎样让它通过一道竖直的狭缝？' },
     { speaker: 'tomb', text: '持续拨动滚轮让球在第四维立直（90 度），等缝边亮起绿光再按 W 推过去。' },
   ],
   tilted: [
-    { speaker: 'tomb', text: '青色圆面是这一层切到的球身。往回拨一格，原来的球会回来吗？' },
+    { speaker: 'tomb', text: '先让球停着。按住 Shift 拨滚轮，沿 W 轴走一步，青色圆会在哪里？' },
     { speaker: 'tomb', text: '斜着看，圆面的边缘像个椭圆。整颗球也有这么薄吗？按 W 推到缝前试试。' },
     { speaker: 'tomb', text: '按 Tab 看金色外轮廓。让球在第四维里立直，等两端都收进缝内，再按 W 推。' },
   ],
@@ -217,12 +223,12 @@ export const LEVEL14_PHASE_HINTS = Object.freeze({
     { speaker: 'tomb', text: '继续拨动滚轮转满 90 度，等 △ 和 ○ 都收进两道亮缝之间、缝边亮起绿光，再按 W 推过去。' },
   ],
   wall_contact: [
-    { speaker: 'tomb', text: '这一层的圆面进得去，哪里还留在缝外？按 Tab 看看相邻层。' },
+    { speaker: 'tomb', text: '按 Tab 对准缝边，再按住 Shift 拨滚轮。沿 W 轴走到哪里，会看到圆伸出缝外？' },
     { speaker: 'tomb', text: '对照两层的缝边。墙沿第四维延伸，另一层里的球身也得进得去。' },
     { speaker: 'tomb', text: '用滚轮把球立直，直到 △ 和 ○ 都收进缝内、缝边亮绿，再按 W 推。' },
   ],
   wall_contact_side_open: [
-    { speaker: 'tomb', text: '按 C 在两层之间来回看。球和墙都没动，哪一层的球身还在缝外？' },
+    { speaker: 'tomb', text: '在侧视图上来回拨滚轮，沿 W 轴观察。哪一层的青色圆伸出了缝边？' },
     { speaker: 'tomb', text: '每一层都有同一道缝。转动球，看看 △ 和 ○ 在左右方向上占多宽。' },
     { speaker: 'tomb', text: '继续转到整颗球立直，两端都进缝、缝边亮绿，再按 W 推。' },
   ],

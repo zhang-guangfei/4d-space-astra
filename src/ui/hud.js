@@ -46,8 +46,11 @@ export class HudController {
       btnPause: document.getElementById('btn-pause'),
       btnTabView: document.getElementById('btn-tab-view'),
       btnTabLabel: document.getElementById('btn-tab-label'),
-      btnCompareLayers: document.getElementById('btn-compare-layers'),
-      compareLayerLabel: document.getElementById('compare-layer-label'),
+      btnWMinus: document.getElementById('btn-w-minus'),
+      btnWPlus: document.getElementById('btn-w-plus'),
+      btnWOrigin: document.getElementById('btn-w-origin'),
+      observeW: document.getElementById('observe-w'),
+      goalMarker: document.getElementById('goal-marker'),
       tabEntryPill: document.getElementById('tab-entry-pill'),
       tabEntryLabel: document.getElementById('tab-entry-label'),
       wheelHandoffCue: document.getElementById('wheel-handoff-cue'),
@@ -100,7 +103,9 @@ export class HudController {
     this.els.btnConsole?.addEventListener('click', () => this.cb.onToggleConsole?.());
     this.els.btnPause?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnTabView?.addEventListener('click', () => this.cb.onToggleHonestView?.());
-    this.els.btnCompareLayers.addEventListener('click', () => this.cb.onCompareLayers?.());
+    this.els.btnWMinus.addEventListener('click', () => this.cb.onStepW?.(-1));
+    this.els.btnWPlus.addEventListener('click', () => this.cb.onStepW?.(1));
+    this.els.btnWOrigin.addEventListener('click', () => this.cb.onReturnToOriginLayer?.());
     this.els.tabEntryPill?.addEventListener('click', () => this.cb.onToggleHonestView?.());
     this.els.btnClosePause?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnResumeLevel?.addEventListener('click', () => this.cb.onTogglePause?.());
@@ -249,10 +254,10 @@ export class HudController {
   /**
    * Synchronize all HUD indicators with current level, hint state, and 3D orb anchor every frame.
    */
-  sync(state, hintSnapshot, orbAnchor = null) {
+  sync(state, hintSnapshot, orbAnchor = null, goalAnchor = null) {
     const badge = state.getHonestViewBadge();
     const ext = state.getExtents();
-    const slice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
+    const slice = state.getSliceAtPlayerW();
     const isBlade = state.isBladeThinEnough();
 
     // 1. Honest View Badge
@@ -272,9 +277,8 @@ export class HudController {
     const [px, py, pz, pw] = state.playerPos;
     const wSign = pw >= 0 ? '+' : '';
     this.els.telemetryCoord.textContent = `XYZ (${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)}) · w ${wSign}${pw.toFixed(2)}`;
-    const layerW = state.grabbed ? state.inspectW : pw;
     const sliceWidth = slice.intersects ? `本层宽 ${(2 * slice.semiX).toFixed(3)} m` : '本层没有球身';
-    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 观察层 w ${layerW.toFixed(2)} · ${sliceWidth} · 整球宽 ${(2 * ext.xMax).toFixed(3)} m · 缝宽 ${(2 * state.config.slitHalfWidth).toFixed(3)} m`;
+    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 观察层 w ${pw.toFixed(2)} · ${sliceWidth} · 整球宽 ${(2 * ext.xMax).toFixed(3)} m · 缝宽 ${(2 * state.config.slitHalfWidth).toFixed(3)} m`;
     this.els.telemetryOrb.style.color = isBlade || state.completed ? PALETTE.accent.emerald : '';
 
     // 3. Three-Beat Organic Progress Strip
@@ -288,7 +292,7 @@ export class HudController {
     this.els.btnHint.classList.toggle('is-hint-pulse', hintSnapshot.pulseSuggested);
 
     // 5. Progressive Tab Entry Pill + Right-Edge w-Ruler Dimming while Grabbed
-    this.els.wRulerBox?.classList.toggle('is-orb-mode', state.grabbed);
+    this.els.wRulerBox?.classList.toggle('is-orb-mode', state.grabbed && !state.hasRotated4DWhileGrabbed && pw === 0);
     if (this.els.tabEntryPill) {
       const showPill = state.grabbed && state.viewMode !== 'side_xzw' && !state.completed;
       this.els.tabEntryPill.hidden = !showPill;
@@ -300,8 +304,20 @@ export class HudController {
     if (this.els.btnTabLabel) {
       this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '收起侧视' : '展开侧视';
     }
-    this.els.btnCompareLayers.hidden = !state.canCompareLayers;
-    this.els.compareLayerLabel.textContent = state.inspectModeActive ? '回看原层' : '查看相邻层';
+    const wText = `W ${wSign}${pw.toFixed(2)}`;
+    if (this.els.observeW.textContent !== wText) this.els.observeW.textContent = wText;
+    this.els.btnWOrigin.disabled = pw === 0;
+    this.els.btnWMinus.disabled = pw <= state.config.playerWMin;
+    this.els.btnWPlus.disabled = pw >= state.config.playerWMax;
+
+    const marker = this.els.goalMarker;
+    marker.hidden = !goalAnchor?.inFront || goalAnchor.x < 0 || goalAnchor.x > window.innerWidth ||
+      goalAnchor.y < 0 || goalAnchor.y > window.innerHeight;
+    if (!marker.hidden) {
+      marker.style.left = `${goalAnchor.x}px`;
+      marker.style.top = `${goalAnchor.y}px`;
+      marker.classList.toggle('opens-left', goalAnchor.x > window.innerWidth - 180);
+    }
 
     // Anchor floating cues beside the 3D Passing Orb in viewport coordinates
     if (orbAnchor && orbAnchor.inFront) {
@@ -329,7 +345,7 @@ export class HudController {
       this.els.reticle.classList.remove('is-hidden');
       const canGrab = state.canGrabOrb() && !state.completed;
       this.els.reticle.classList.toggle('is-interactable', canGrab);
-      this.els.reticlePrompt.textContent = canGrab ? '[E] 抓住圆球' : '';
+      this.els.reticlePrompt.textContent = state.canReconnectAtPedestal ? '[E] 重新操控底座上的球' : canGrab ? '[E] 抓住圆球' : '';
     }
 
     // 7. Context Control Micro-Strip (clean & uncluttered)
@@ -340,12 +356,8 @@ export class HudController {
       this.els.controlStripText.innerHTML =
         '巨墙已敞开 · 按 <strong>WASD</strong> 穿过通道踏上前方<strong>北侧传送台</strong> · 按 <strong>R</strong> 重玩';
     } else if (state.grabbed) {
-      const dragLabel =
-        state.viewMode === 'side_xzw'
-          ? '侧视态已锁定三维轴向'
-          : '拖拽：三维转动';
       this.els.controlStripText.innerHTML =
-        `${dragLabel} · <strong>滚轮：转动手中的球</strong> · <strong>W/S</strong> 前后推拉 · <strong>Tab</strong> 侧视图 · <strong>E</strong> 松开`;
+        '<strong>滚轮</strong> 转球 · <strong>Shift + 滚轮</strong> 沿 W 轴观察 · <strong>W/S</strong> 推拉 · <strong>Tab</strong> 侧视 · <strong>E</strong> 松开';
     } else {
       this.els.controlStripText.innerHTML =
         'WASD 移动 · 拖拽/点击环视 · <strong>滚轮沿 w 轴移动</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>H</strong> 提示 · <strong>I</strong> 原理';
