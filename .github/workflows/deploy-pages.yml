@@ -70,6 +70,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install Chinese fonts for Edge screenshots
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Prepare Edge
         run: |
           npm install --prefix "$RUNNER_TEMP/astra-browser" --no-audit --no-fund playwright-core@1.56.1
