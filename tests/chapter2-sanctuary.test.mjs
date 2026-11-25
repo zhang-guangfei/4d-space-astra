@@ -242,3 +242,67 @@ test('Level 14 discovery-first guidance: neighboring colliding w-layer math & co
   assert.equal(northH3Final.tier, 3);
   assert.match(northH3Final.text, /反向/);
 });
+
+test('邻层标记落在真实截面内且超出缝边，接近立直时也成立', () => {
+  const state = new Level14HairlineSlitState();
+  for (const angle of [7, -7, 84, -84, 85.29, 94.71, 96, 173, 264, 276]) {
+    const theta = angle * Math.PI / 180;
+    const w = state.computeTiltedCollisionInspectW(angle);
+    const slice = computeOblateSpheroidSliceAtW(theta, w);
+    const x = state.getWallOverlapX(slice);
+    assert.notEqual(w, 0, String(angle));
+    assert.ok(x > state.config.slitHalfWidth, String(angle));
+    assert.ok(Math.abs(x - slice.xCenter) <= slice.semiX, String(angle));
+    assert.equal(state.getWallOverlapX(computeOblateSpheroidSliceAtW(theta, 0)), null);
+  }
+  for (const angle of [0, 85.4, 90, 94.6, 180]) {
+    assert.equal(state.computeTiltedCollisionInspectW(angle), 0, String(angle));
+  }
+});
+
+test('先开侧视或先碰壁都能取证；按住推球键时仍然可以反复回看', () => {
+  for (const openFirst of [true, false]) {
+    const state = new Level14HairlineSlitState();
+    state.playerPos = [0, 1.85, -4.8, 0];
+    state.setGrabbed(true);
+    state.rotateOrb4D(84);
+    if (openFirst) state.toggleViewMode();
+    assert.equal(state.startCollisionInspect(), 0);
+    assert.doesNotMatch(new TieredHintController(14).requestContextHint('tilted').text, /刚才碰到/);
+    assert.equal(state.pushOrbZ(1.1).blocked, true);
+    if (!openFirst) state.toggleViewMode();
+    assert.equal(state.canCompareLayers, true);
+    assert.equal(state.inspectModeActive, true);
+    const z = state.orbZ;
+    assert.equal(state.stepInspectW(1 / 60).arrivedAtEvidence, false);
+    assert.equal(state.hasDiscoveredAllWWall, false);
+    assert.doesNotMatch(state.getHonestViewBadge().title, /越过/);
+    for (let i = 0; i < 180; i++) state.stepInspectW(1 / 60);
+    assert.equal(state.hasDiscoveredAllWWall, true);
+    assert.match(state.getHonestViewBadge().title, /相邻层/);
+    state.clearCollisionInspect();
+    state.pushOrbZ(0.1);
+    state.stepInspectW(1);
+    assert.equal(state.inspectW, 0);
+    assert.equal(state.inspectModeActive, false);
+    assert.equal(state.orbZ, z);
+    assert.equal(state.thetaDeg, 84);
+    assert.notEqual(state.startCollisionInspect(), 0);
+    state.toggleViewMode();
+    state.toggleViewMode();
+    assert.notEqual(state.inspectTargetW, 0);
+    state.pushOrbZ(-0.25);
+    assert.equal(state.canCompareLayers, false);
+    state.pushOrbZ(0.4);
+    assert.equal(state.canCompareLayers, true);
+    state.rotateOrb4D(1.4);
+    assert.equal(state.canCompareLayers, false);
+    assert.equal(state.inspectW, 0);
+    assert.equal(state.pushOrbZ(0.2).blocked, true);
+    assert.equal(state.getCurrentPuzzlePhase(), 'slit_margin');
+    assert.equal(state.canCompareLayers, false);
+    state.setGrabbed(false);
+    state.setGrabbed(true);
+    assert.equal(state.canCompareLayers, false);
+  }
+});

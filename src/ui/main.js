@@ -189,18 +189,13 @@ function boot() {
     hud?.setTabAttention(false);
     hud?.hideSliceCallout();
 
-    // If player opens Tab AFTER bumping the wall while tilted, keep orb & wall fixed
-    // and smoothly glide observation to the colliding neighboring w-layer so they SEE the evidence!
-    if (
-      mode === 'side_xzw' &&
-      state.grabbed &&
-      state.hasBumpedWhileTilted &&
-      !state.isBladeThinEnough() &&
-      !coached.wallEvidenceNamed
-    ) {
-      state.startCollisionInspect();
-    }
     announceBeatAdvance();
+  };
+
+  const compareLayers = () => {
+    if (paused || guideOpen || teleporterOpen || !state.canCompareLayers) return;
+    if (state.inspectModeActive) state.clearCollisionInspect();
+    else state.startCollisionInspect();
   };
 
   const handleReset = () => {
@@ -273,6 +268,7 @@ function boot() {
     },
     onTogglePause: handleTogglePause,
     onToggleHonestView: handleToggleHonestView,
+    onCompareLayers: compareLayers,
     onReleaseAfterVictory: () => releaseGrabCleanly({ keepVictoryBanner: false }),
     onCloseTeleporterModal: () => {
       teleporterOpen = false;
@@ -295,6 +291,7 @@ function boot() {
     onTogglePause: handleTogglePause,
     onToggleGuide: () => principleGuide.toggle(),
     onToggleHonestView: handleToggleHonestView,
+    onCompareLayers: compareLayers,
     onToggleConsole: () => {
       const expanded = consolePanel.toggle();
       hud.setConsoleExpanded(expanded);
@@ -359,7 +356,7 @@ function boot() {
             hud.showSliceCallout(5800);
             voice.speak(
               'tomb',
-              '你把球的一部分转出了我们这一层。青色的，是还留在这里的那一片。',
+              '球朝第四维转了。看，两端转到了别的层，留在眼前的是中间这片圆面。',
               { durationMs: 6800 }
             );
           }
@@ -401,8 +398,8 @@ function boot() {
           coached.wScrollSphereSlices = true;
           voice.speak(
             'tomb',
-            '现在你看到的是在第四维度不同位置的球切面，所有切面拼接起来就是球的整体三维结构。换句话说，球被切成了不同的圆被分散放在了w轴上。',
-            { tierLabel: '维度洞察', durationMs: 10200 }
+            '你在换层。每一层都能看到同一颗球的不同部分。',
+            { durationMs: 5800 }
           );
         } else if (!coached.wScrollAllW && !orbRotatedIntoW && Math.abs(res.w) >= 0.85 && !state.completed) {
           coached.wScrollAllW = true;
@@ -432,7 +429,7 @@ function boot() {
         coached.wallEvidenceNamed = true;
         voice.speak(
           'tomb',
-          '原来，换到这一层，墙还在。它沿第四维也一直延伸。',
+          '看红圈。换了一层，这里也有墙，这一片球身还在缝外。',
           { durationMs: 6800 }
         );
       }
@@ -452,15 +449,13 @@ function boot() {
       if (state.grabbed) {
         if (move.forward !== 0) {
           const speed = move.sprint ? 3.4 : 2.15;
+          const wasBlocked = state.lastBlockEvent?.type === 'too_wide_for_slit';
           const res = state.pushOrbZ(move.forward * speed * dtSec);
-          if (res.blocked) {
+          if (res.blocked && !wasBlocked) {
             sfx.playBlocked();
             grabStage.triggerBlockFlash();
-            const distFrom0 = angularDistanceMod180Deg(state.thetaDeg, 0);
-            if (distFrom0 >= 4 && distFrom0 < 85) {
-              // Tilted bump: confirm thin cyan slice fits + highlight protruding contact spot + light up Tab!
-              const xContact = Math.max(0.24, state.getExtents().xMax * 0.68);
-              sanctuary3D.triggerTiltedBump(xContact);
+            if (state.computeTiltedCollisionInspectW() !== 0) {
+              sanctuary3D.triggerTiltedBump();
               hud.hideSliceCallout();
               if (state.viewMode !== 'side_xzw') {
                 hud.setTabAttention(true);
@@ -470,7 +465,7 @@ function boot() {
                 voice.speak(
                   'tomb',
                   state.viewMode === 'side_xzw'
-                    ? '看看刚才碰到墙的是哪一部分。'
+                    ? '球先别动。沿第四维换一层看看。'
                     : '眼前这片够薄了。刚才是哪里碰到了墙？',
                   { durationMs: 6400 }
                 );

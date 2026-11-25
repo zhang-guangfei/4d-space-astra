@@ -47,7 +47,6 @@ export class Level14SanctuaryScene {
     this.barrierFlash = 0;
     this.sliceConfirmPulse = 0;
     this.contactHighlight = 0;
-    this.contactX = 0.55;
     this.openingPulseTimer = 4.2;
     this.hintHighlight = false;
     this.gateOpenProgress = 0;
@@ -1035,7 +1034,7 @@ export class Level14SanctuaryScene {
     this.contactPatchMat = createGhostMaterial(s, 'wall_contact_patch_mat', PALETTE.accent.amberCoral, 0.34);
     this.contactPatchMesh = B.MeshBuilder.CreateDisc(
       'wall_contact_patch',
-      { radius: 0.72, tessellation: 32 },
+      { radius: 1, tessellation: 32, sideOrientation: B.Mesh.DOUBLESIDE },
       s
     );
     this.contactPatchMesh.position.set(0.55, LEVEL14_CONFIG.orbCenterY, LEVEL14_CONFIG.wallZMin - 0.09);
@@ -1208,10 +1207,9 @@ export class Level14SanctuaryScene {
    * 1. Flashes the thin cyan slice & both slit lips cyan-platinum ("this slice IS thin enough!")
    * 2. Highlights the exact protruding 4D wing + wall contact area instead of the whole wall!
    */
-  triggerTiltedBump(xContact = 0.55) {
+  triggerTiltedBump() {
     this.sliceConfirmPulse = 1.0;
     this.contactHighlight = 1.0;
-    this.contactX = Math.max(0.22, Math.abs(xContact));
   }
 
   triggerOpeningPedestalSpotlight() {
@@ -1325,9 +1323,9 @@ export class Level14SanctuaryScene {
     this.orbPoleTri.setEnabled(showSlicePoles);
     this.orbPoleCirc.setEnabled(showSlicePoles);
     if (showSlicePoles) {
-      const driftOut = (1 - poleFade) * 0.32;
-      this.orbPoleTri.position.set(-(1.08 + driftOut), 0, 0);
-      this.orbPoleCirc.position.set(1.08 + driftOut, 0, 0);
+      const poleX = Math.cos(state.thetaRad) * state.config.radiusR;
+      this.orbPoleTri.position.set(-poleX, 0, 0);
+      this.orbPoleCirc.position.set(poleX, 0, 0);
       const sPole = 0.65 + 0.35 * poleFade;
       this.orbPoleTri.scaling.setAll(sPole);
       this.orbPoleCirc.scaling.setAll(sPole);
@@ -1341,8 +1339,8 @@ export class Level14SanctuaryScene {
     this.orbProjTri.setEnabled(show4DProjection);
     this.orbProjCirc.setEnabled(show4DProjection);
     if (show4DProjection) {
-      this.orbProjRoot.scaling.set(Math.max(0.01, ext.xMax), 1.0, 1.0);
-      const beaconX = Math.max(0.06, ext.xMax + 0.08);
+      this.orbProjRoot.scaling.set(ext.xMax, 1.0, 1.0);
+      const beaconX = Math.cos(state.thetaRad) * state.config.radiusR;
       this.orbProjTri.position.set(-beaconX, 0, 0);
       this.orbProjCirc.position.set(beaconX, 0, 0);
       const beaconHex = isBlade
@@ -1352,9 +1350,7 @@ export class Level14SanctuaryScene {
           : PALETTE.accent.goldWPos;
       this.projBeaconMat.albedoColor = B.Color3.FromHexString(beaconHex);
       this.projBeaconMat.emissiveColor = B.Color3.FromHexString(beaconHex).scale(1.85);
-      this.orbProjShellMat.emissiveColor = B.Color3.FromHexString(
-        isBlade ? PALETTE.accent.emerald : PALETTE.accent.goldWPos
-      ).scale(0.85);
+      this.orbProjShellMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(0.85);
     } else {
       this.orbProjRoot.scaling.set(1.0, 1.0, 1.0);
     }
@@ -1369,10 +1365,6 @@ export class Level14SanctuaryScene {
     let accentHex = PALETTE.accent.cyanW0;
     if (state.completed) {
       accentHex = PALETTE.accent.platinum;
-    } else if (isBlade) {
-      accentHex = PALETTE.accent.emerald;
-    } else if (isInspectingOtherW) {
-      accentHex = PALETTE.accent.amberCoral;
     }
     const accentColor = B.Color3.FromHexString(accentHex);
     this.orbCoreMat.albedoColor = accentColor;
@@ -1398,14 +1390,15 @@ export class Level14SanctuaryScene {
     }
 
     // 4. Focused Collision Contact Patch + Slit Edge Feedback (never blind the player with a whole-wall flash!)
-    const showContact = (this.contactHighlight > 0.04 || isInspectingOtherW) && !isBlade && !state.completed;
-    this.contactPatchMesh.isVisible = showContact;
-    if (showContact) {
-      const cx = isInspectingOtherW && slice.intersects ? slice.xCenter : this.contactX;
+    const contactX = state.canCompareLayers ? state.getWallOverlapX(slice) : null;
+    this.contactPatchMesh.isVisible = contactX !== null;
+    if (contactX !== null) {
+      const northFace = state.orbZ > 0;
+      this.contactPatchMesh.scaling.set(Math.min(0.06, Math.abs(contactX) - state.config.slitHalfWidth), 0.14, 1);
       this.contactPatchMesh.position.set(
-        cx,
+        contactX,
         LEVEL14_CONFIG.orbCenterY,
-        LEVEL14_CONFIG.wallZMin - 0.09
+        northFace ? LEVEL14_CONFIG.wallZMax + 0.09 : LEVEL14_CONFIG.wallZMin - 0.09
       );
       const pulse = 0.30 + 0.05 * Math.sin(this.elapsed * 6.5);
       this.contactPatchMat.alpha = Math.min(0.35, Math.max(0.30, pulse));

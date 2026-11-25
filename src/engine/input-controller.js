@@ -223,6 +223,11 @@ export class InputController {
         return;
       }
 
+      if (e.code === 'KeyC' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        this.cb.onCompareLayers?.();
+        return;
+      }
+
       if (e.code === 'KeyI' && !e.repeat) {
         e.preventDefault();
         this.cb.onToggleGuide?.();

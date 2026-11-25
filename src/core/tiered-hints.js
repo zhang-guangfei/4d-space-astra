@@ -207,14 +207,29 @@ export const LEVEL14_PHASE_HINTS = Object.freeze({
     { speaker: 'tomb', text: '持续拨动滚轮让球在第四维立直（90 度），等缝边亮起绿光再按 W 推过去。' },
   ],
   tilted: [
-    { speaker: 'tomb', text: '眼前这一片够薄了——按 Tab 看看刚才碰到墙的是哪一部分。' },
-    { speaker: 'tomb', text: '想象一枚平放在光面里的硬币，轻轻翘起时只剩一条细线——怎样才能让整枚硬币真正穿过竖缝？' },
-    { speaker: 'tomb', text: '盯着侧视图里的 △ 和 ○ 两端，继续拨动滚轮，直到它们一起收进两道亮缝之间、缝边亮起绿光。' },
+    { speaker: 'tomb', text: '青色圆面是这一层切到的球身。往回拨一格，原来的球会回来吗？' },
+    { speaker: 'tomb', text: '斜着看，圆面的边缘像个椭圆。整颗球也有这么薄吗？按 W 推到缝前试试。' },
+    { speaker: 'tomb', text: '按 Tab 看金色外轮廓。让球在第四维里立直，等两端都收进缝内，再按 W 推。' },
   ],
   tilted_side_open: [
-    { speaker: 'tomb', text: '想象一枚平放在光面里的硬币，轻轻翘起时只剩一条细线——怎样才能让整枚硬币真正穿过竖缝？' },
+    { speaker: 'tomb', text: '青色是这一层的截面。金色轮廓标出了整颗球占的地方，它们一样宽吗？' },
     { speaker: 'tomb', text: '盯着侧视图里的 △ 和 ○ 两端：继续拨动滚轮，观察它们如何在左右方向上向缝内靠拢。' },
     { speaker: 'tomb', text: '继续拨动滚轮转满 90 度，等 △ 和 ○ 都收进两道亮缝之间、缝边亮起绿光，再按 W 推过去。' },
+  ],
+  wall_contact: [
+    { speaker: 'tomb', text: '这一层的圆面进得去，哪里还留在缝外？按 Tab 看看相邻层。' },
+    { speaker: 'tomb', text: '对照两层的缝边。墙沿第四维延伸，另一层里的球身也得进得去。' },
+    { speaker: 'tomb', text: '用滚轮把球立直，直到 △ 和 ○ 都收进缝内、缝边亮绿，再按 W 推。' },
+  ],
+  wall_contact_side_open: [
+    { speaker: 'tomb', text: '按 C 在两层之间来回看。球和墙都没动，哪一层的球身还在缝外？' },
+    { speaker: 'tomb', text: '每一层都有同一道缝。转动球，看看 △ 和 ○ 在左右方向上占多宽。' },
+    { speaker: 'tomb', text: '继续转到整颗球立直，两端都进缝、缝边亮绿，再按 W 推。' },
+  ],
+  slit_margin: [
+    { speaker: 'tomb', text: '两端已经贴着缝边了。再转一点，能给它们留出空隙吗？' },
+    { speaker: 'tomb', text: '看两道缝边。把球再立直一点，它们会同时亮绿。' },
+    { speaker: 'tomb', text: '调到接近直角，等缝边亮绿，按 W 推过去。' },
   ],
   blade_ready: [
     { speaker: 'tomb', text: '缝边已经亮起绿光——现在试着把球往前推。' },
@@ -323,7 +338,8 @@ export class TieredHintController {
     if (this.levelId !== 14) {
       return this.requestNextHint();
     }
-    const key = phase === 'tilted' && sideViewOpen ? 'tilted_side_open' : phase;
+    const key = sideViewOpen && (phase === 'tilted' || phase === 'wall_contact')
+      ? `${phase}_side_open` : phase;
     const list = LEVEL14_PHASE_HINTS[key] || LEVEL14_PHASE_HINTS.approach;
     const prevTier = this.phaseTiers[key] || 0;
     const nextTier = Math.min(prevTier + 1, list.length);

@@ -103,11 +103,10 @@ export class GrabStageController {
       this.camTarget.z = lerp(this.camTarget.z, desiredTarget.z, fpSmooth);
     } else {
       // Zero-Occlusion 3-Zone Slit Camera Choreography
-      const isSide = state.viewMode === 'side_xzw';
       if (state.orbZ <= -1.05) {
         desiredPos = {
-          x: isSide ? 2.35 : 2.15,
-          y: isSide ? 2.75 : 2.55,
+          x: 2.15,
+          y: 2.55,
           z: state.orbZ - 4.35,
         };
         desiredTarget = {
@@ -128,8 +127,8 @@ export class GrabStageController {
         };
       } else {
         desiredPos = {
-          x: isSide ? 2.5 : 2.35,
-          y: isSide ? 2.75 : 2.6,
+          x: 2.35,
+          y: 2.6,
           z: Math.max(2.3, state.orbZ + 3.45),
         };
         desiredTarget = {
@@ -186,9 +185,9 @@ export class GrabStageController {
     const toPxX = (x) => cx + x * scale;
     const toPxW = (w) => cy - w * scale;
 
-    const ext = state.getExtents();
     const activeW = state.grabbed ? state.inspectW : state.playerPos[3];
     const activeSlice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
+    const overlapX = state.canCompareLayers ? state.getWallOverlapX(activeSlice) : null;
     const activeSliceY = Math.max(24, Math.min(cssH - 28, toPxW(activeW)));
     const isBlade = state.isBladeThinEnough();
     const inWallZ = state.isOrbOverlappingWallZ();
@@ -210,7 +209,7 @@ export class GrabStageController {
     }
 
     // 2. Architectural Monolith Walls matching the 3D cathedral's brushed bronze jaws & Vernier ticks!
-    const slitHalfPx = Math.max(8, LEVEL14_CONFIG.slitHalfWidth * scale);
+    const slitHalfPx = LEVEL14_CONFIG.slitHalfWidth * scale;
     const wallTop = 18;
     const wallBot = cssH - 24;
     const wallAlpha = isInspectingOtherW ? 0.28 : inWallZ ? 0.32 : 0.18;
@@ -273,7 +272,7 @@ export class GrabStageController {
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.strokeStyle = isInspectingOtherW ? PALETTE.accent.amberCoral : 'rgba(77, 230, 211, 0.88)';
+    ctx.strokeStyle = 'rgba(77, 230, 211, 0.88)';
     ctx.lineWidth = isInspectingOtherW ? 2.2 : 1.8;
     ctx.beginPath();
     ctx.moveTo(16, activeSliceY);
@@ -343,11 +342,9 @@ export class GrabStageController {
       else ctx.lineTo(px, py);
     });
     ctx.closePath();
-    ctx.fillStyle = isBlade
-      ? 'rgba(105, 240, 174, 0.28)'
-      : 'rgba(247, 195, 70, 0.22)';
+    ctx.fillStyle = 'rgba(247, 195, 70, 0.22)';
     ctx.fill();
-    ctx.strokeStyle = isBlade ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
+    ctx.strokeStyle = PALETTE.accent.goldWPos;
     ctx.lineWidth = 2.2;
     ctx.stroke();
 
@@ -361,19 +358,17 @@ export class GrabStageController {
 
     // 6. Highlight intersection segment on the active observation layer (w = 0 or inspectW!)
     if (activeSlice.intersects) {
-      const segColor = isInspectingOtherW ? PALETTE.accent.amberCoral : PALETTE.accent.cyanW0;
-      ctx.strokeStyle = segColor;
+      ctx.strokeStyle = PALETTE.accent.cyanW0;
       ctx.lineWidth = 5;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(toPxX(activeSlice.xCenter - Math.max(0.025, activeSlice.semiX)), activeSliceY);
-      ctx.lineTo(toPxX(activeSlice.xCenter + Math.max(0.025, activeSlice.semiX)), activeSliceY);
+      ctx.moveTo(toPxX(activeSlice.xCenter - activeSlice.semiX), activeSliceY);
+      ctx.lineTo(toPxX(activeSlice.xCenter + activeSlice.semiX), activeSliceY);
       ctx.stroke();
 
       // If inspecting neighboring layer OR bumping wall: highlight the EXACT wall contact spot!
-      const outsideSlit = Math.abs(activeSlice.xCenter) > LEVEL14_CONFIG.slitHalfWidth;
-      if ((isInspectingOtherW || this.blockFlash > 0.05) && outsideSlit && !isBlade) {
-        const hitX = toPxX(activeSlice.xCenter);
+      if (overlapX !== null && !isBlade) {
+        const hitX = toPxX(overlapX);
         const pulseR = 9 + Math.sin(this.elapsed * 8) * 3;
         ctx.strokeStyle = PALETTE.accent.amberCoral;
         ctx.lineWidth = 2.2;
@@ -389,7 +384,7 @@ export class GrabStageController {
         ctx.font = '700 10.5px "Inter", "PingFang SC", sans-serif';
         ctx.fillStyle = '#FFD1D1';
         ctx.textAlign = hitX > cx ? 'left' : 'right';
-        ctx.fillText('撞墙接触处', hitX + (hitX > cx ? 13 : -13), activeSliceY + 19);
+        ctx.fillText('越过缝边的部分', hitX + (hitX > cx ? 13 : -13), activeSliceY + 19);
       }
     }
 
@@ -427,7 +422,7 @@ export class GrabStageController {
     ctx.textAlign = 'left';
     ctx.fillText('第四维度 w ↑', cx + 8, axisTop + 10);
 
-    ctx.fillStyle = isInspectingOtherW ? '#FFB4B4' : PALETTE.accent.cyanW0;
+    ctx.fillStyle = PALETTE.accent.cyanW0;
     ctx.textAlign = 'right';
     ctx.fillText(
       isInspectingOtherW ? '相邻层观察' : '我们所在的三维切面',
@@ -444,10 +439,10 @@ export class GrabStageController {
         ? '#FFD1D1'
         : PALETTE.accent.platinum;
     const footerMsg = isBlade
-      ? '△ 与 ○ 已全部收进亮缝之间 — 可以往前推了'
-      : isInspectingOtherW
-        ? '这一层仍有同一道墙，球身正抵在缝外墙面上'
-        : '滚动滚轮，观察 △ 与 ○ 如何向两道亮缝之间收拢';
+      ? '两端都已收进缝内，可以往前推了'
+      : overlapX !== null
+        ? '红圈标出这一层越过缝边的球身'
+        : '△ 和 ○ 标出球的两端，两点之间的距离始终一样';
     ctx.fillText(footerMsg, cx, cssH - 8);
     ctx.textAlign = 'left';
 

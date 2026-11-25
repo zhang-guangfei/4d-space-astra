@@ -159,10 +159,8 @@ body {
 }
 
 .telemetry-bar {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  display: block;
+  pointer-events: auto;
   padding: 5px 9px;
   width: fit-content;
   background: rgba(18, 15, 11, 0.54);
@@ -178,8 +176,13 @@ body {
   opacity: 1;
 }
 
-.telemetry-bar .sep {
-  display: none;
+.telemetry-bar summary {
+  cursor: pointer;
+}
+
+.telemetry-bar .mono {
+  display: block;
+  margin-top: 2px;
 }
 
 .beats-strip {
@@ -619,6 +622,23 @@ body {
   color: var(--text-muted);
   border-top: 1px solid var(--border-subtle);
 }
+
+.side-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+}
+
+.side-legend i {
+  display: inline-block;
+  height: 8px;
+  width: 14px;
+  border-radius: 50%;
+}
+
+.slice-symbol { background: var(--accent-cyan); }
+.outline-symbol { border: 2px solid var(--accent-gold); }
+.mini-key-btn[hidden] { display: none; }
 
 /* Right Edge: Vertical W Phase Ruler + Collapsible 3-Slice Console */
 .tactical-wrapper {

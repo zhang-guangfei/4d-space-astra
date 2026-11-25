@@ -46,6 +46,8 @@ export class HudController {
       btnPause: document.getElementById('btn-pause'),
       btnTabView: document.getElementById('btn-tab-view'),
       btnTabLabel: document.getElementById('btn-tab-label'),
+      btnCompareLayers: document.getElementById('btn-compare-layers'),
+      compareLayerLabel: document.getElementById('compare-layer-label'),
       tabEntryPill: document.getElementById('tab-entry-pill'),
       tabEntryLabel: document.getElementById('tab-entry-label'),
       wheelHandoffCue: document.getElementById('wheel-handoff-cue'),
@@ -98,6 +100,7 @@ export class HudController {
     this.els.btnConsole?.addEventListener('click', () => this.cb.onToggleConsole?.());
     this.els.btnPause?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnTabView?.addEventListener('click', () => this.cb.onToggleHonestView?.());
+    this.els.btnCompareLayers.addEventListener('click', () => this.cb.onCompareLayers?.());
     this.els.tabEntryPill?.addEventListener('click', () => this.cb.onToggleHonestView?.());
     this.els.btnClosePause?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnResumeLevel?.addEventListener('click', () => this.cb.onTogglePause?.());
@@ -249,7 +252,7 @@ export class HudController {
   sync(state, hintSnapshot, orbAnchor = null) {
     const badge = state.getHonestViewBadge();
     const ext = state.getExtents();
-    const sl0 = state.getSliceAtW0();
+    const slice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
     const isBlade = state.isBladeThinEnough();
 
     // 1. Honest View Badge
@@ -269,7 +272,9 @@ export class HudController {
     const [px, py, pz, pw] = state.playerPos;
     const wSign = pw >= 0 ? '+' : '';
     this.els.telemetryCoord.textContent = `XYZ (${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)}) · w ${wSign}${pw.toFixed(2)}`;
-    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 切面 ${sl0.semiX.toFixed(3)}m · 总宽 ${ext.xMax.toFixed(3)}m / 缝 0.082m`;
+    const layerW = state.grabbed ? state.inspectW : pw;
+    const sliceWidth = slice.intersects ? `本层宽 ${(2 * slice.semiX).toFixed(3)} m` : '本层没有球身';
+    this.els.telemetryOrb.textContent = `θ ${state.thetaDeg.toFixed(1)}° · 观察层 w ${layerW.toFixed(2)} · ${sliceWidth} · 整球宽 ${(2 * ext.xMax).toFixed(3)} m · 缝宽 ${(2 * state.config.slitHalfWidth).toFixed(3)} m`;
     this.els.telemetryOrb.style.color = isBlade || state.completed ? PALETTE.accent.emerald : '';
 
     // 3. Three-Beat Organic Progress Strip
@@ -295,6 +300,8 @@ export class HudController {
     if (this.els.btnTabLabel) {
       this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '收起侧视' : '展开侧视';
     }
+    this.els.btnCompareLayers.hidden = !state.canCompareLayers;
+    this.els.compareLayerLabel.textContent = state.inspectModeActive ? '回看原层' : '查看相邻层';
 
     // Anchor floating cues beside the 3D Passing Orb in viewport coordinates
     if (orbAnchor && orbAnchor.inFront) {
