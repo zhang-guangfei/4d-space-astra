@@ -18,6 +18,11 @@ export class HudController {
     this.shimmerTimer = null;
     this.toastTimer = null;
     this.victoryBannerDismissed = false;
+    this.wheelCueVisible = false;
+    this.wheelCueTimer = null;
+    this.sliceTagVisible = false;
+    this.sliceTagTimer = null;
+    this.tabAttention = false;
 
     this.els = {
       edgeShimmer: document.getElementById('edge-shimmer'),
@@ -41,6 +46,11 @@ export class HudController {
       btnPause: document.getElementById('btn-pause'),
       btnTabView: document.getElementById('btn-tab-view'),
       btnTabLabel: document.getElementById('btn-tab-label'),
+      tabEntryPill: document.getElementById('tab-entry-pill'),
+      tabEntryLabel: document.getElementById('tab-entry-label'),
+      wheelHandoffCue: document.getElementById('wheel-handoff-cue'),
+      sliceCalloutTag: document.getElementById('slice-callout-tag'),
+      wRulerBox: document.getElementById('w-ruler-box'),
       reticle: document.getElementById('reticle'),
       reticlePrompt: document.getElementById('reticle-prompt'),
       controlStripText: document.getElementById('control-strip-text'),
@@ -88,6 +98,7 @@ export class HudController {
     this.els.btnConsole?.addEventListener('click', () => this.cb.onToggleConsole?.());
     this.els.btnPause?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnTabView?.addEventListener('click', () => this.cb.onToggleHonestView?.());
+    this.els.tabEntryPill?.addEventListener('click', () => this.cb.onToggleHonestView?.());
     this.els.btnClosePause?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnResumeLevel?.addEventListener('click', () => this.cb.onTogglePause?.());
     this.els.btnResetLevel?.addEventListener('click', () => {
@@ -128,11 +139,52 @@ export class HudController {
 
   resetBanner() {
     this.victoryBannerDismissed = false;
+    this.tabAttention = false;
+    this.hideWheelHandoffCue();
+    this.hideSliceCallout();
     this.setTeleporterVisible(false);
   }
 
   dismissVictoryBanner() {
     this.victoryBannerDismissed = true;
+  }
+
+  showWheelHandoffCue(durationMs = 4600) {
+    if (!this.els.wheelHandoffCue) return;
+    this.wheelCueVisible = true;
+    this.els.wheelHandoffCue.classList.add('is-visible');
+    if (this.wheelCueTimer) clearTimeout(this.wheelCueTimer);
+    this.wheelCueTimer = setTimeout(() => this.hideWheelHandoffCue(), durationMs);
+  }
+
+  hideWheelHandoffCue() {
+    this.wheelCueVisible = false;
+    if (this.wheelCueTimer) {
+      clearTimeout(this.wheelCueTimer);
+      this.wheelCueTimer = null;
+    }
+    this.els.wheelHandoffCue?.classList.remove('is-visible');
+  }
+
+  showSliceCallout(durationMs = 5400) {
+    if (!this.els.sliceCalloutTag) return;
+    this.sliceTagVisible = true;
+    this.els.sliceCalloutTag.classList.add('is-visible');
+    if (this.sliceTagTimer) clearTimeout(this.sliceTagTimer);
+    this.sliceTagTimer = setTimeout(() => this.hideSliceCallout(), durationMs);
+  }
+
+  hideSliceCallout() {
+    this.sliceTagVisible = false;
+    if (this.sliceTagTimer) {
+      clearTimeout(this.sliceTagTimer);
+      this.sliceTagTimer = null;
+    }
+    this.els.sliceCalloutTag?.classList.remove('is-visible');
+  }
+
+  setTabAttention(active) {
+    this.tabAttention = Boolean(active);
   }
 
   setTeleporterVisible(visible) {
@@ -192,9 +244,9 @@ export class HudController {
   }
 
   /**
-   * Synchronize all HUD indicators with current level & hint state every frame.
+   * Synchronize all HUD indicators with current level, hint state, and 3D orb anchor every frame.
    */
-  sync(state, hintSnapshot) {
+  sync(state, hintSnapshot, orbAnchor = null) {
     const badge = state.getHonestViewBadge();
     const ext = state.getExtents();
     const sl0 = state.getSliceAtW0();
@@ -213,7 +265,7 @@ export class HudController {
     this.els.honestDot.style.background = dotColor;
     this.els.honestDot.style.boxShadow = `0 0 8px ${dotColor}`;
 
-    // 2. Precision tabular-nums telemetry (zero "W=0切片" jargon)
+    // 2. Subtle precision telemetry (available for curious explorers, never shouting over visuals)
     const [px, py, pz, pw] = state.playerPos;
     const wSign = pw >= 0 ? '+' : '';
     this.els.telemetryCoord.textContent = `XYZ (${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)}) · w ${wSign}${pw.toFixed(2)}`;
@@ -230,9 +282,36 @@ export class HudController {
     this.els.btnHintLabel.textContent = `提示 ${hintSnapshot.tier}/${hintSnapshot.maxTier}`;
     this.els.btnHint.classList.toggle('is-hint-pulse', hintSnapshot.pulseSuggested);
 
-    // 5. Tab button label inside side view panel
+    // 5. Progressive Tab Entry Pill + Right-Edge w-Ruler Dimming while Grabbed
+    this.els.wRulerBox?.classList.toggle('is-orb-mode', state.grabbed);
+    if (this.els.tabEntryPill) {
+      const showPill = state.grabbed && state.viewMode !== 'side_xzw' && !state.completed;
+      this.els.tabEntryPill.hidden = !showPill;
+      this.els.tabEntryPill.classList.toggle('is-attention', this.tabAttention);
+      if (this.els.tabEntryLabel) {
+        this.els.tabEntryLabel.textContent = this.tabAttention ? '看看哪里碰到了墙' : '第四维侧视';
+      }
+    }
     if (this.els.btnTabLabel) {
-      this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '返回三维切面' : '查看第四维侧视';
+      this.els.btnTabLabel.textContent = state.viewMode === 'side_xzw' ? '收起侧视' : '展开侧视';
+    }
+
+    // Anchor floating cues beside the 3D Passing Orb in viewport coordinates
+    if (orbAnchor && orbAnchor.inFront) {
+      const vw = window.innerWidth || 1280;
+      const vh = window.innerHeight || 720;
+      if (this.wheelCueVisible && this.els.wheelHandoffCue) {
+        const cx = Math.max(120, Math.min(vw - 140, orbAnchor.x + 132));
+        const cy = Math.max(130, Math.min(vh - 110, orbAnchor.y - 36));
+        this.els.wheelHandoffCue.style.left = `${cx}px`;
+        this.els.wheelHandoffCue.style.top = `${cy}px`;
+      }
+      if (this.sliceTagVisible && this.els.sliceCalloutTag) {
+        const cx = Math.max(90, Math.min(vw - 180, orbAnchor.x + 28));
+        const cy = Math.max(130, Math.min(vh - 110, orbAnchor.y - 24));
+        this.els.sliceCalloutTag.style.left = `${cx}px`;
+        this.els.sliceCalloutTag.style.top = `${cy}px`;
+      }
     }
 
     // 6. Smart Dynamic Reticle
@@ -243,29 +322,29 @@ export class HudController {
       this.els.reticle.classList.remove('is-hidden');
       const canGrab = state.canGrabOrb() && !state.completed;
       this.els.reticle.classList.toggle('is-interactable', canGrab);
-      this.els.reticlePrompt.textContent = canGrab ? '[E] 抓取圆球（操作这把钥匙）' : '';
+      this.els.reticlePrompt.textContent = canGrab ? '[E] 抓住圆球' : '';
     }
 
-    // 7. Context Control Micro-Strip (zero W=0 jargon)
+    // 7. Context Control Micro-Strip (clean & uncluttered)
     if (state.completed && state.grabbed) {
       this.els.controlStripText.innerHTML =
-        '钥匙归位，四维巨墙正在打开 · 按 <strong>E</strong> 返回自由视角走向北侧传送台';
+        '钥匙归位，巨墙正在打开 · 按 <strong>E</strong> 返回自由视角走向北侧传送台';
     } else if (state.completed) {
       this.els.controlStripText.innerHTML =
-        '四维巨墙已打开 · 按 <strong>WASD</strong> 穿过巨墙踏上前方<strong>北侧传送台</strong> · 按 <strong>R</strong> 重玩';
+        '巨墙已敞开 · 按 <strong>WASD</strong> 穿过通道踏上前方<strong>北侧传送台</strong> · 按 <strong>R</strong> 重玩';
     } else if (state.grabbed) {
       const dragLabel =
         state.viewMode === 'side_xzw'
           ? '侧视态已锁定三维轴向'
-          : '拖拽：三维旋转';
+          : '拖拽：三维转动';
       this.els.controlStripText.innerHTML =
-        `${dragLabel} · <strong>滚轮：在第四维度旋转球</strong> · <strong>W/S</strong> 前后推拉 · <strong>Tab</strong> 第四维侧视 · <strong>E</strong> 松开`;
+        `${dragLabel} · <strong>滚轮：转动手中的球</strong> · <strong>W/S</strong> 前后推拉 · <strong>Tab</strong> 侧视图 · <strong>E</strong> 松开`;
     } else {
       this.els.controlStripText.innerHTML =
         'WASD 移动 · 拖拽/点击环视 · <strong>滚轮沿 w 轴移动</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>H</strong> 提示 · <strong>I</strong> 原理';
     }
 
-    // 8. Victory Banner (non-blocking; hidden once player starts walking toward teleporter or presses E)
+    // 8. Victory Banner
     if (this.els.victoryBanner) {
       this.els.victoryBanner.hidden = !state.completed || this.victoryBannerDismissed || state.enteredTeleporter;
     }

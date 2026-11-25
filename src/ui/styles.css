@@ -163,13 +163,19 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  padding: 6px 10px;
+  padding: 5px 9px;
   width: fit-content;
-  background: rgba(18, 15, 11, 0.72);
-  border: 1px solid var(--border-subtle);
+  background: rgba(18, 15, 11, 0.54);
+  border: 1px solid rgba(246, 244, 238, 0.08);
   border-radius: 5px;
-  font-size: 11px;
-  color: rgba(246, 244, 238, 0.86);
+  font-size: 10.5px;
+  color: rgba(246, 244, 238, 0.62);
+  opacity: 0.78;
+  transition: opacity 0.2s ease;
+}
+
+.telemetry-bar:hover {
+  opacity: 1;
 }
 
 .telemetry-bar .sep {
@@ -388,6 +394,138 @@ body {
 .reticle.is-interactable .reticle-prompt:not(:empty) {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Floating Scroll-Wheel Handoff Cue (glides from right w-ruler to orb on E grab!) */
+.wheel-handoff-cue {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(160px, 40px) scale(0.92);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(20, 16, 11, 0.9);
+  border: 1px solid rgba(247, 195, 70, 0.72);
+  color: var(--accent-platinum);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.52), 0 0 18px rgba(247, 195, 70, 0.24);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.wheel-handoff-cue.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.wheel-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(247, 195, 70, 0.18);
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Floating Screen-Space Callout Tag anchored beside cyan disc on first slight tilt */
+.slice-callout-tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(24px, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(14, 24, 24, 0.88);
+  border: 1px solid rgba(77, 230, 211, 0.68);
+  color: var(--accent-cyan);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.48), 0 0 14px rgba(77, 230, 211, 0.22);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s ease;
+}
+
+.slice-callout-tag.is-visible {
+  opacity: 1;
+}
+
+.callout-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 8px var(--accent-cyan);
+}
+
+/* Progressive Bottom-Left Tab Entry Pill */
+.tab-entry-pill {
+  position: absolute;
+  left: 18px;
+  bottom: 58px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--border-bronze);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+  transition: border-color 0.22s ease, background 0.22s ease, transform 0.16s ease, box-shadow 0.22s ease;
+}
+
+.tab-entry-pill[hidden] {
+  display: none;
+}
+
+.tab-entry-pill:hover {
+  border-color: var(--accent-gold);
+  background: rgba(34, 28, 18, 0.94);
+}
+
+.tab-entry-pill.is-attention {
+  border-color: var(--accent-gold);
+  color: var(--accent-platinum);
+  background: rgba(42, 31, 16, 0.94);
+  animation: tabAttentionPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tabAttentionPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(247, 195, 70, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 22px 4px rgba(247, 195, 70, 0.56);
+  }
+}
+
+.w-ruler.is-orb-mode {
+  opacity: 0.34;
+  transition: opacity 0.32s ease;
 }
 
 /* Bottom-Left: Honest XZW Side-View Panel */

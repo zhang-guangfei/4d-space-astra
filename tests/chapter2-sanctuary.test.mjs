@@ -6,7 +6,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { LEVEL14_CONFIG, Level14HairlineSlitState } from '../src/core/sanctuary-4d.js';
+import {
+  LEVEL14_CONFIG,
+  Level14HairlineSlitState,
+  computeOblateSpheroidSliceAtW,
+} from '../src/core/sanctuary-4d.js';
 import {
   LEVEL_HINTS,
   STAGNATION_THRESHOLD_SEC,
@@ -188,4 +192,53 @@ test('Rendering anti-regression invariants: Ghost material strictly disables dep
   assert.throws(() =>
     assertGhostMaterialInvariants({ alpha: 0.34, disableDepthWrite: true, needDepthPrePass: true })
   );
+});
+
+test('Level 14 discovery-first guidance: neighboring colliding w-layer math & context-aware H hints', () => {
+  const s = new Level14HairlineSlitState();
+  const ctrl = new TieredHintController(14);
+
+  // 1. Opening phase & non-spoiling initial badge
+  assert.equal(s.getCurrentPuzzlePhase(), 'approach');
+  assert.equal(s.hasDiscoveredAllWWall, false);
+  assert.doesNotMatch(s.getHonestViewBadge().detail, /贯穿整个/);
+
+  // 2. Across tilted blocked angles, computeTiltedCollisionInspectW ALWAYS chooses a neighboring w-layer
+  //    where a large circular orb cross-section exists AND sits clearly outside the ±0.082m slit hitting the wall!
+  for (const deg of [10, 20, 35, 50, 65, 78]) {
+    const wInspect = s.computeTiltedCollisionInspectW(deg);
+    assert.ok(Math.abs(wInspect) > 0.05, `Expected non-zero inspectW at ${deg}°`);
+    const sl = computeOblateSpheroidSliceAtW((deg * Math.PI) / 180, wInspect);
+    assert.equal(sl.intersects, true, `Neighboring layer at ${deg}° must contain orb body`);
+    assert.ok(sl.semiY >= 0.75, `Neighboring orb cross-section at ${deg}° must be visibly large (>= 0.75m)`);
+    assert.ok(
+      Math.abs(sl.xCenter) > LEVEL14_CONFIG.slitHalfWidth,
+      `Neighboring orb slice center (${sl.xCenter.toFixed(3)}m) at ${deg}° must sit outside ±0.082m slit hitting the wall`
+    );
+  }
+
+  // 3. Phase progression & context-aware H hints on North Pedestal (never repeats opening coin hint!)
+  s.playerPos = [0, 1.85, -4.8, 0];
+  s.setGrabbed(true);
+  assert.equal(s.getCurrentPuzzlePhase(), 'grabbed_flat');
+  s.rotateOrb4D(15);
+  assert.equal(s.getCurrentPuzzlePhase(), 'tilted');
+  const tiltedHint = ctrl.requestContextHint('tilted', { sideViewOpen: true });
+  assert.match(tiltedHint.text, /？$/, 'Coin analogy hint must stop cleanly at the question mark');
+
+  s.rotateOrb4D(75); // 90° blade
+  assert.equal(s.getCurrentPuzzlePhase(), 'blade_ready');
+  s.pushOrbZ(6.4); // Arrive on North Pedestal
+  assert.equal(s.getCurrentPuzzlePhase(), 'north_restore');
+
+  // Pressing H for the VERY FIRST time at North Pedestal must address restoration!
+  const freshCtrl = new TieredHintController(14);
+  const northH1 = freshCtrl.requestContextHint(s.getCurrentPuzzlePhase());
+  assert.equal(northH1.tier, 1);
+  assert.match(northH1.text, /底座|立起来/, 'North Pedestal Tier 1 hint must guide restoration, not opening coin analogy');
+  const northH3 = freshCtrl.requestContextHint(s.getCurrentPuzzlePhase());
+  const northH3Final = freshCtrl.requestContextHint(s.getCurrentPuzzlePhase());
+  assert.equal(northH3.tier, 2);
+  assert.equal(northH3Final.tier, 3);
+  assert.match(northH3Final.text, /反向/);
 });

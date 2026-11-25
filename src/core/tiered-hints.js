@@ -134,20 +134,20 @@ export const LEVEL_HINTS = Object.freeze({
     name: '发丝裂缝',
     opening: {
       speaker: 'tomb',
-      text: '如何让三维的球穿过这个四维墙壁？',
+      text: '把这颗球送到那边的底座上。',
     },
     tiers: [
       {
         speaker: 'tomb',
-        text: '请思考如何让一个平放的硬币通过一个竖直的狭缝？没错，旋转硬币让硬币立起来。现在的球就像是平放在二维平面的硬币，我们需要让它在第四维度立起来。',
+        text: '想象一枚平放在纸面上的硬币——怎样让它通过一道竖直的狭缝？',
       },
       {
         speaker: 'tomb',
-        text: '走近圆球按 E 抓住它。普通的三维转动就像把硬币在桌面上打转，宽度一点没变；试试拨动鼠标滚轮，把球旋转到第四维度里立起来。',
+        text: '盯着侧视图里 △ 和 ○ 这两个端点，继续拨动滚轮，让它们在左右方向上一起收进两道亮缝之间。',
       },
       {
         speaker: 'tomb',
-        text: '持续拨动滚轮让球在第四维度旋转 90 度彻底立直，按 W 把它推过狭缝到达对面基座，再反向滚轮把它放平，四维巨墙就会为你打开。',
+        text: '把球在第四维转满 90 度让 △ 和 ○ 收进亮缝，按 W 推过狭缝到达对面底座，再反向拨动滚轮放平它。',
       },
     ],
   },
@@ -189,6 +189,48 @@ export const LEVEL_HINTS = Object.freeze({
   },
 });
 
+/**
+ * Context-aware hint ladder for Level 14 ("发丝裂缝").
+ * Ensures pressing H ALWAYS speaks directly to what the player is trying to solve RIGHT NOW
+ * (e.g. restoration on North Pedestal gives restoration prompts, never stale opening coin hints!),
+ * and stops Socratic questions cleanly at the "?" so the player makes the mental leap themselves.
+ */
+export const LEVEL14_PHASE_HINTS = Object.freeze({
+  approach: [
+    { speaker: 'tomb', text: '走近那颗青色的球，按 E 试着抓住它。' },
+    { speaker: 'tomb', text: '按 E 抓住球后，拨动鼠标滚轮看看球会发生什么变化。' },
+    { speaker: 'tomb', text: '走近按 E 抓住球，用滚轮把它在第四维转满 90 度立起来，再按 W 推过亮缝。' },
+  ],
+  grabbed_flat: [
+    { speaker: 'tomb', text: '在三维里转它，球的宽度一点也没变。试试拨动鼠标滚轮。' },
+    { speaker: 'tomb', text: '想象一枚平放在纸面上的硬币——怎样让它通过一道竖直的狭缝？' },
+    { speaker: 'tomb', text: '持续拨动滚轮让球在第四维立直（90 度），等缝边亮起绿光再按 W 推过去。' },
+  ],
+  tilted: [
+    { speaker: 'tomb', text: '眼前这一片够薄了——按 Tab 看看刚才碰到墙的是哪一部分。' },
+    { speaker: 'tomb', text: '想象一枚平放在光面里的硬币，轻轻翘起时只剩一条细线——怎样才能让整枚硬币真正穿过竖缝？' },
+    { speaker: 'tomb', text: '盯着侧视图里的 △ 和 ○ 两端，继续拨动滚轮，直到它们一起收进两道亮缝之间、缝边亮起绿光。' },
+  ],
+  tilted_side_open: [
+    { speaker: 'tomb', text: '想象一枚平放在光面里的硬币，轻轻翘起时只剩一条细线——怎样才能让整枚硬币真正穿过竖缝？' },
+    { speaker: 'tomb', text: '盯着侧视图里的 △ 和 ○ 两端：继续拨动滚轮，观察它们如何在左右方向上向缝内靠拢。' },
+    { speaker: 'tomb', text: '继续拨动滚轮转满 90 度，等 △ 和 ○ 都收进两道亮缝之间、缝边亮起绿光，再按 W 推过去。' },
+  ],
+  blade_ready: [
+    { speaker: 'tomb', text: '缝边已经亮起绿光——现在试着把球往前推。' },
+    { speaker: 'tomb', text: '按住 W 键，把立起来的球稳稳推过亮缝，送到对面的金色底座上。' },
+    { speaker: 'tomb', text: '一直按住 W 穿过狭缝到达对面底座，再把球转回底座轮廓的完整球形。' },
+  ],
+  north_restore: [
+    { speaker: 'tomb', text: '看看对面底座亮起的圆球轮廓——还记得它刚才是怎么立起来的吗？' },
+    { speaker: 'tomb', text: '它现在还竖立在第四维里。把刚才让它立起来的动作反过来做一次。' },
+    { speaker: 'tomb', text: '反向拨动鼠标滚轮，把圆球重新放平回我们这一层，它就会完整复原并打开巨墙。' },
+  ],
+  completed: [
+    { speaker: 'tomb', text: '巨墙已经向两侧敞开，按 WASD 穿过前方通道踏上发光的传送台即可前往下一关。' },
+  ],
+});
+
 export class TieredHintController {
   constructor(levelId = 14, options = {}) {
     this.stagnationThresholdSec = options.stagnationThresholdSec ?? STAGNATION_THRESHOLD_SEC;
@@ -201,6 +243,8 @@ export class TieredHintController {
     }
     this.levelId = levelId;
     this.currentTier = 0; // 0 = none triggered yet, 1..3 = tier 1..3
+    this.phaseTiers = {};
+    this.lastPhase = null;
     this.stagnationSec = 0;
     this.pulseSuggested = false;
     this.lastBeat = 0;
@@ -217,24 +261,25 @@ export class TieredHintController {
 
   /**
    * Call every frame with delta seconds and the level's current beat (0..3).
-   * If the player advances to a new beat, stagnation timer resets without disturbing them.
+   * If the player advances to a new beat or puzzle phase, stagnation resets without disturbing them.
    * When stagnation hits 45s, `pulseSuggested` becomes true (gentle HUD glow, no popup!).
    */
-  update(dtSec, currentBeat = this.lastBeat, isCompleted = false) {
+  update(dtSec, currentBeat = this.lastBeat, isCompleted = false, currentPhase = null) {
     if (isCompleted) {
       this.completed = true;
       this.pulseSuggested = false;
       return { pulseSuggested: false, justBecameSuggested: false };
     }
 
-    if (currentBeat > this.lastBeat) {
-      this.lastBeat = currentBeat;
+    if (currentBeat > this.lastBeat || (currentPhase && currentPhase !== this.lastPhase)) {
+      this.lastBeat = Math.max(this.lastBeat, currentBeat);
+      if (currentPhase) this.lastPhase = currentPhase;
       this.stagnationSec = 0;
       this.pulseSuggested = false;
     }
 
     const wasSuggested = this.pulseSuggested;
-    if (this.currentTier < this.getMaxTier()) {
+    if (this.currentTier < this.getMaxTier() || currentPhase) {
       this.stagnationSec += Math.max(0, dtSec);
       if (this.stagnationSec >= this.stagnationThresholdSec) {
         this.pulseSuggested = true;
@@ -267,6 +312,34 @@ export class TieredHintController {
       speaker: hint.speaker,
       text: hint.text,
       shouldHighlightTarget: nextTier === entry.tiers.length,
+    };
+  }
+
+  /**
+   * Context-aware hint lookup for Level 14: tracks progressive hint tier per puzzle phase
+   * so pressing H on the North Pedestal ALWAYS addresses restoration, never the opening!
+   */
+  requestContextHint(phase, { sideViewOpen = false } = {}) {
+    if (this.levelId !== 14) {
+      return this.requestNextHint();
+    }
+    const key = phase === 'tilted' && sideViewOpen ? 'tilted_side_open' : phase;
+    const list = LEVEL14_PHASE_HINTS[key] || LEVEL14_PHASE_HINTS.approach;
+    const prevTier = this.phaseTiers[key] || 0;
+    const nextTier = Math.min(prevTier + 1, list.length);
+    this.phaseTiers[key] = nextTier;
+    this.currentTier = nextTier;
+    this.stagnationSec = 0;
+    this.pulseSuggested = false;
+    const hint = list[nextTier - 1];
+    return {
+      levelId: this.levelId,
+      phase: key,
+      tier: nextTier,
+      maxTier: list.length,
+      speaker: hint.speaker,
+      text: hint.text,
+      shouldHighlightTarget: nextTier === list.length,
     };
   }
 

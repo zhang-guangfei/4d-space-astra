@@ -1,14 +1,22 @@
 /**
  * Beyond 3D — Application Bootstrap (Phase 1 Vertical Slice: Level 14 "发丝裂缝")
- * Level 14 Experience Flow:
- * 1. Enter the 3D Sanctuary directly (no blocking Principle modal on entry; I key opens 3D Principle Guide anytime).
- * 2. Opening voice immediately poses the puzzle goal: "如何让三维的球穿过这个四维墙壁？"
- * 3. Warm coin-analogy H-key hints & reactive coaching (rotation into 4D, Tab side view, W-axis cross-sections,
- *    90° upright passage, North Pedestal restoration) with ZERO "W=0切片" jargon.
- * 4. Passing Orb acts as the Key: restoring it on the North Pedestal automatically parts the twin 6.8m monolith walls
- *    and ignites the North Teleportation Pad (Z = 6.4) so the player walks straight through to the next level.
+ *
+ * Discovery-First Guided Experience ("Show first -> point attention in 1 line -> let player verify!"):
+ * 1. Opening: Briefly spotlight North Golden Pedestal behind slit; voice sets goal only ("把这颗球送到那边的底座上。").
+ * 2. Grab (E): Scroll-wheel handoff cue glides from right w-ruler to orb + 1 line ("现在，滚轮转动的是你手里的球。");
+ *    Side View stays tucked behind a clean [Tab] pill to prevent information overload.
+ * 3. First Slight Tilt: Decorative rings dim, △ & ○ diameter markers fade outward reversibly, cyan disc shows
+ *    "留在这一层的部分" tag + 1 observation ("你把球的一部分转出了我们这一层。青色的，是还留在这里的那一片。") -> STOP!
+ * 4. First Tilted Wall Bump: Confirm thin cyan slice fits inside slit lips + highlight exact protruding contact spot
+ *    + pulse [Tab] pill + 1 Socratic question ("眼前这片够薄了。刚才是哪里碰到了墙？").
+ * 5. Tab Inspection After Bump: Glides observer's w-layer smoothly to the colliding neighboring layer while orb & wall
+ *    stay fixed, revealing the orb body pressing against the solid wall in that layer -> names discovery once seen!
+ * 6. 90° Upright: △ & ○ tuck inside the slit lips and glow emerald -> silent space for player's own decision to push W!
+ * 7. North Arrival: Full-sphere pedestal silhouette pulses -> "球送到了。看看底座的形状。" -> context-aware H hints!
+ * 8. Key Restored: Twin 13.6m monoliths part 7.86m wide open -> walk straight to North Teleportation Pad (Z = 11.2)!
  */
 
+import { angularDistanceMod180Deg } from '../core/math4d.js';
 import { Level14HairlineSlitState } from '../core/sanctuary-4d.js';
 import { TieredHintController } from '../core/tiered-hints.js';
 import { CharacterVoiceEngine } from '../engine/character-voice.js';
@@ -42,7 +50,7 @@ function boot() {
   camera.maxZ = 160;
   camera.fov = 0.92;
 
-  // 2. Pure Core State & Tiered Hints (Level 14)
+  // 2. Pure Core State & Context-Aware Tiered Hints (Level 14)
   const state = new Level14HairlineSlitState();
   const hints = new TieredHintController(14);
   let lastBeat = 0;
@@ -52,19 +60,25 @@ function boot() {
   let guideOpen = false;
   let teleporterOpen = false;
   let audioUnlocked = false;
+  let northStuckTimer = 0;
+  let northPushAttempts = 0;
 
-  // Reactive coin-analogy coaching milestones (each fires once per natural player discovery)
+  // Discovery-first coaching milestones (every moment fires ONCE at the exact right beat!)
   const coached = {
+    firstGrabWheel: false,
     wScrollAllW: false,
     wScrollSphereSlices: false,
     drag3DInvariant: false,
     slightTiltDisc: false,
     tiltedBlocked: false,
-    bladeAligned: false,
+    wallEvidenceNamed: false,
     northArrived: false,
+    northRestoreNudge: false,
   };
   const resetCoaching = () => {
     for (const k of Object.keys(coached)) coached[k] = false;
+    northStuckTimer = 0;
+    northPushAttempts = 0;
   };
 
   // 3. Audio & Dual-Character Voice (D12)
@@ -106,13 +120,19 @@ function boot() {
       autoReleaseTimer = null;
     }
     if (!state.grabbed) return;
+    const releasingAtNorthUnrestored = !state.completed && state.isOnNorthPedestal();
     state.setGrabbed(false);
     input.setGrabbed(false);
-    // Face straight North through the parting twin monolith walls toward the North Teleportation Pad
+    hud?.hideWheelHandoffCue();
+    hud?.hideSliceCallout();
+    hud?.setTabAttention(false);
     input.setLookAngles(0, 0.03);
     sfx.playGrabLock(false);
     if (state.completed && !keepVictoryBanner) {
       hud?.dismissVictoryBanner();
+    } else if (releasingAtNorthUnrestored && !coached.northRestoreNudge) {
+      coached.northRestoreNudge = true;
+      voice.speak('tomb', '还记得它刚才是怎么立起来的吗？', { durationMs: 5600 });
     }
   };
 
@@ -126,14 +146,16 @@ function boot() {
     if (state.completed && !victoryAnnounced) {
       victoryAnnounced = true;
       sanctuary3D.setHintHighlight(false);
+      hud?.hideSliceCallout();
+      hud?.hideWheelHandoffCue();
+      hud?.setTabAttention(false);
       sfx.playVictory();
       voice.speak(
         'tomb',
-        '钥匙归位！球体已经在对面完好复原，四维巨墙正在为你打开。请穿过巨墙走上前方发光的传送台，前往下一关。',
-        { durationMs: 8200 }
+        '钥匙归位，巨墙打开了。穿过前方通道，踏上传送台前往下一关。',
+        { durationMs: 7400 }
       );
-      // Automatically release Grab Stage cleanly after a brief beat so the player watches
-      // the twin 6.8m monolith walls part wide open in front of them and can walk right through!
+      // Auto-release after a brief beat so player watches the twin 13.6m monolith walls part wide open
       if (autoReleaseTimer) clearTimeout(autoReleaseTimer);
       autoReleaseTimer = setTimeout(() => {
         autoReleaseTimer = null;
@@ -146,11 +168,14 @@ function boot() {
 
   const handleRequestHint = () => {
     unlockAudioOnce();
-    const res = hints.requestNextHint();
+    const phase = state.getCurrentPuzzlePhase();
+    const res = hints.requestContextHint(phase, {
+      sideViewOpen: state.viewMode === 'side_xzw',
+    });
     const tierNames = ['思路启发', '操作方向', '完整解法'];
     voice.speak(res.speaker, res.text, {
-      tierLabel: `${res.tier}级·${tierNames[res.tier - 1]}`,
-      durationMs: 9200,
+      tierLabel: `${res.tier}级·${tierNames[Math.min(res.tier - 1, tierNames.length - 1)]}`,
+      durationMs: 8200,
     });
     if (res.shouldHighlightTarget) {
       sanctuary3D.setHintHighlight(true);
@@ -161,6 +186,20 @@ function boot() {
     unlockAudioOnce();
     const mode = state.toggleViewMode();
     sfx.playTabViewSwitch(mode === 'side_xzw');
+    hud?.setTabAttention(false);
+    hud?.hideSliceCallout();
+
+    // If player opens Tab AFTER bumping the wall while tilted, keep orb & wall fixed
+    // and smoothly glide observation to the colliding neighboring w-layer so they SEE the evidence!
+    if (
+      mode === 'side_xzw' &&
+      state.grabbed &&
+      state.hasBumpedWhileTilted &&
+      !state.isBladeThinEnough() &&
+      !coached.wallEvidenceNamed
+    ) {
+      state.startCollisionInspect();
+    }
     announceBeatAdvance();
   };
 
@@ -178,11 +217,12 @@ function boot() {
     input.setGrabbed(false);
     input.setLookAngles(-0.22, 0.04);
     sanctuary3D.setHintHighlight(false);
+    sanctuary3D.triggerOpeningPedestalSpotlight();
     lastBeat = 0;
     victoryAnnounced = false;
     syncPauseState();
     const opening = hints.getOpeningLine();
-    voice.speak(opening.speaker, opening.text, { durationMs: 6000 });
+    voice.speak(opening.speaker, opening.text, { durationMs: 5200 });
   };
 
   const handleTogglePause = () => {
@@ -201,7 +241,7 @@ function boot() {
     hud.setPaused(paused);
   };
 
-  // 5. Enlarged Interactive 3D Principle Briefing (opened manually via I key or button; never blocks entry!)
+  // 5. Enlarged Interactive 3D Principle Briefing (opened via I key; never blocks entry!)
   const principleGuide = new PrincipleGuideController({
     onVisibilityChange: (isOpen) => {
       guideOpen = isOpen;
@@ -275,62 +315,65 @@ function boot() {
       if (res.grabbed) {
         input.setGrabbed(true);
         sfx.playGrabLock(true);
+        // Clean scroll-wheel handoff cue from right w-ruler to orb + 1 clear line!
+        hud.showWheelHandoffCue(4800);
+        if (!coached.firstGrabWheel) {
+          coached.firstGrabWheel = true;
+          voice.speak('tomb', '现在，滚轮转动的是你手里的球。', { durationMs: 5000 });
+        }
         announceBeatAdvance();
       } else {
-        hud.showBlockToast('请再走近圆球一些，按 E 抓住它');
+        hud.showBlockToast('再走近圆球一些，按 E 抓住它');
       }
     },
     onGrabDrag3D: (deltaYaw, deltaPitch) => {
-      // Lock 3D rotation axes in Tab Side View so mouse movement never disorients the player
       if (state.viewMode === 'side_xzw') return;
       state.rotateOrb3D(deltaYaw, deltaPitch);
       if (!coached.drag3DInvariant && state.hasRotated3DWhileGrabbed && !state.hasRotated4DWhileGrabbed) {
         coached.drag3DInvariant = true;
-        voice.speak(
-          'tomb',
-          '这样转动就像让平放的硬币在桌面上原地打转，球的宽度还是完整的两米，过不去狭缝。试试拨动鼠标滚轮，把球旋转到第四维度里。',
-          { tierLabel: '思路提醒', durationMs: 7600 }
-        );
+        voice.speak('tomb', '这样转动，球的宽度一点也没变。试试拨动鼠标滚轮。', { durationMs: 5600 });
       }
     },
     onWheel4D: (wheelUnits) => {
       if (state.grabbed) {
-        // Grab Stage: Mouse Wheel = 4D Rotation into Fourth Dimension w!
         const deltaDeg = wheelUnits * 5.0;
         const wasBlade = state.isBladeThinEnough();
         const res = state.rotateOrb4D(deltaDeg);
+        hud.hideWheelHandoffCue();
+
         if (res.blocked) {
           sfx.playBlocked();
           sanctuary3D.triggerBarrierFlash();
           grabStage.triggerBlockFlash();
           hud.flashEdge(PALETTE.accent.amberCoral);
-          hud.showBlockToast(state.lastBlockEvent?.message || '狭缝内空间不足，请先将球推到对面基座再放平');
+          hud.showBlockToast(state.lastBlockEvent?.message || '狭缝内空间不足，请先将球推到对面底座');
         } else if (res.applied) {
           const isBladeNow = res.isBlade;
           sfx.playRotate4D(res.thetaDeg, !wasBlade && isBladeNow);
 
-          // Exact requested narration when rotating the sphere into the 4th dimension!
-          const distFrom0 = Math.min(res.thetaDeg, 360 - res.thetaDeg);
+          // Beat: First slight tilt — show "留在这一层的部分" tag + 1 clean observation -> STOP!
+          // Leave room for the player to scroll back & forth or test pushing into the slit themselves!
+          const distFrom0 = angularDistanceMod180Deg(res.thetaDeg, 0);
           if (!coached.slightTiltDisc && !isBladeNow && distFrom0 >= 4 && distFrom0 < 85) {
             coached.slightTiltDisc = true;
+            hud.showSliceCallout(5800);
             voice.speak(
               'tomb',
-              '球已经脱离当前三维空间，被旋转到了第四个维度，只在当前三维空间内留下一个球的切面，就像硬币旋转了几度后，只在二维平面留下一条直径一样。请继续在第四维度旋转球，直到旋转90度后让球在第四维度立起来。按Tab查看第四维度侧视图。',
-              { tierLabel: '现象解析', durationMs: 11800 }
+              '你把球的一部分转出了我们这一层。青色的，是还留在这里的那一片。',
+              { durationMs: 6800 }
             );
           }
 
-          // Reached 90° upright blade state
+          // Hide slice callout if player returns cleanly to 0° (reversible confirmation!)
+          if (distFrom0 < 3) {
+            hud.hideSliceCallout();
+          }
+
+          // Reached 90° upright: bright emerald slit lips & harmonic chime — SILENT so player decides to push W!
           if (!wasBlade && isBladeNow) {
             hud.flashEdge(PALETTE.accent.emerald);
-            if (!coached.bladeAligned) {
-              coached.bladeAligned = true;
-              voice.speak(
-                'tomb',
-                '很好！这颗球已经在第四维度完全立起来了——它一点也没有被压扁，只是像一枚竖直的硬币一样把宽度藏进了第四维度。现在按 W 把它推过狭缝吧！',
-                { tierLabel: '状态达成', durationMs: 8000 }
-              );
-            }
+            hud.hideSliceCallout();
+            hud.setTabAttention(false);
           }
           announceBeatAdvance();
         }
@@ -346,7 +389,7 @@ function boot() {
               : PALETTE.accent.cyanW0;
         hud.flashEdge(wColor);
 
-        // Exact requested narration when scrolling along w while the sphere is rotated and its slice grows/shrinks!
+        // When sphere is tilted and player scrolls w watching circular cross-sections grow & shrink:
         const orbRotatedIntoW = Math.abs(Math.sin(state.thetaRad)) > 0.08;
         const orbSliceNow = state.getSliceAtPlayerW();
         if (
@@ -359,14 +402,14 @@ function boot() {
           voice.speak(
             'tomb',
             '现在你看到的是在第四维度不同位置的球切面，所有切面拼接起来就是球的整体三维结构。换句话说，球被切成了不同的圆被分散放在了w轴上。',
-            { tierLabel: '维度洞察', durationMs: 10500 }
+            { tierLabel: '维度洞察', durationMs: 10200 }
           );
         } else if (!coached.wScrollAllW && !orbRotatedIntoW && Math.abs(res.w) >= 0.85 && !state.completed) {
           coached.wScrollAllW = true;
           voice.speak(
             'tomb',
-            '你正在沿第四维度 w 轴移动，两旁的折页已虚实交替——但眼前的四维巨墙贯穿了整个 w 轴，靠平移绕不过去，得想办法转动那颗球。',
-            { tierLabel: '现象提示', durationMs: 7400 }
+            '换到这一层，两旁的折页变了——但前方的墙依然在原位。',
+            { durationMs: 5800 }
           );
         }
         announceBeatAdvance();
@@ -374,15 +417,37 @@ function boot() {
     },
   });
 
-  // Enter Level 14 directly (DO NOT auto-show Principle modal on entry!)
-  // Immediately announce the opening goal voice line (plays on first gesture via CharacterVoiceEngine)
+  // Enter Level 14 directly: spotlight North Pedestal behind slit + 1 concise goal line!
+  sanctuary3D.triggerOpeningPedestalSpotlight();
   const opening = hints.getOpeningLine();
   setTimeout(() => {
-    voice.speak(opening.speaker, opening.text, { durationMs: 6500 });
+    voice.speak(opening.speaker, opening.text, { durationMs: 5200 });
   }, 350);
 
   const stepFrame = (dtSec = 1 / 24) => {
     if (!paused && !guideOpen && !teleporterOpen) {
+      // Smoothly glide observer's w-layer during Tab collision inspection after a tilted bump
+      const inspectStatus = state.stepInspectW(dtSec);
+      if (inspectStatus.arrivedAtEvidence && !coached.wallEvidenceNamed) {
+        coached.wallEvidenceNamed = true;
+        voice.speak(
+          'tomb',
+          '原来，换到这一层，墙还在。它沿第四维也一直延伸。',
+          { durationMs: 6800 }
+        );
+      }
+
+      // Gentle nudge if player lingers on North Pedestal without restoring the sphere
+      if (state.grabbed && !state.completed && state.isOnNorthPedestal()) {
+        northStuckTimer += dtSec;
+        if (northStuckTimer >= 12.0 && !coached.northRestoreNudge) {
+          coached.northRestoreNudge = true;
+          voice.speak('tomb', '还记得它刚才是怎么立起来的吗？', { durationMs: 5800 });
+        }
+      } else {
+        northStuckTimer = 0;
+      }
+
       const move = input.sampleMoveVector(dtSec);
       if (state.grabbed) {
         if (move.forward !== 0) {
@@ -390,32 +455,47 @@ function boot() {
           const res = state.pushOrbZ(move.forward * speed * dtSec);
           if (res.blocked) {
             sfx.playBlocked();
-            sanctuary3D.triggerBarrierFlash();
             grabStage.triggerBlockFlash();
-            hud.flashEdge(PALETTE.accent.amberCoral);
-            const distFrom0 = Math.min(state.thetaDeg, 360 - state.thetaDeg);
-            if (!coached.tiltedBlocked && distFrom0 >= 4 && distFrom0 < 85) {
-              coached.tiltedBlocked = true;
-              voice.speak(
-                'tomb',
-                '就像只倾斜了一点点的硬币：它在纸面上只留一条细线，但翘在空中的硬币本体还是太宽，会卡在狭缝外。按 Tab 打开第四维度侧视图，继续滚轮转满 90 度让它彻底立直吧！',
-                { tierLabel: '受阻原因', durationMs: 8800 }
-              );
+            const distFrom0 = angularDistanceMod180Deg(state.thetaDeg, 0);
+            if (distFrom0 >= 4 && distFrom0 < 85) {
+              // Tilted bump: confirm thin cyan slice fits + highlight protruding contact spot + light up Tab!
+              const xContact = Math.max(0.24, state.getExtents().xMax * 0.68);
+              sanctuary3D.triggerTiltedBump(xContact);
+              hud.hideSliceCallout();
+              if (state.viewMode !== 'side_xzw') {
+                hud.setTabAttention(true);
+              }
+              if (!coached.tiltedBlocked) {
+                coached.tiltedBlocked = true;
+                voice.speak(
+                  'tomb',
+                  state.viewMode === 'side_xzw'
+                    ? '看看刚才碰到墙的是哪一部分。'
+                    : '眼前这片够薄了。刚才是哪里碰到了墙？',
+                  { durationMs: 6400 }
+                );
+              }
+            } else {
+              sanctuary3D.triggerBarrierFlash();
+              hud.flashEdge(PALETTE.accent.amberCoral);
             }
-            hud.showBlockToast(state.lastBlockEvent?.message || '圆球四维总宽大于狭缝，请先转满 90° 立直');
-          } else if (res.onNorthPedestal && !state.completed && !coached.northArrived) {
-            coached.northArrived = true;
-            voice.speak(
-              'tomb',
-              '圆球已经完好穿过狭缝到达对面基座了！它现在还像竖立的硬币一样立在第四维度里，反向拨动滚轮把它重新放平，回到我们所在的三维空间吧。',
-              { tierLabel: '最后一步', durationMs: 8000 }
-            );
+            hud.showBlockToast(state.lastBlockEvent?.message || '被墙挡住了');
+          } else if (res.onNorthPedestal && !state.completed) {
+            if (!coached.northArrived) {
+              coached.northArrived = true;
+              voice.speak('tomb', '球送到了。看看底座的形状。', { durationMs: 5800 });
+            } else if (Math.abs(state.orbZ - state.config.orbMaxZ) < 0.05 && move.forward > 0) {
+              northPushAttempts += dtSec;
+              if (northPushAttempts > 1.2 && !coached.northRestoreNudge) {
+                coached.northRestoreNudge = true;
+                voice.speak('tomb', '还记得它刚才是怎么立起来的吗？', { durationMs: 5800 });
+              }
+            }
           }
           announceBeatAdvance();
         }
       } else if (move.forward !== 0 || move.right !== 0) {
         if (state.completed) {
-          // Dismiss banner smoothly once player begins walking through the parted walls
           hud?.dismissVictoryBanner();
         }
         const speed = move.sprint ? 8.5 : 5.2;
@@ -429,32 +509,29 @@ function boot() {
           sfx.playBlocked();
           sanctuary3D.triggerBarrierFlash();
           hud.flashEdge(PALETTE.accent.amberCoral);
-          hud.showBlockToast('四维巨墙贯穿整个 w 轴，需先将圆球送过狭缝作为钥匙打开它');
+          hud.showBlockToast(state.lastBlockEvent?.message || '缝隙太窄，人穿不过去');
           announceBeatAdvance();
         }
         if (res.justEnteredTeleporter) {
           sfx.playVictory();
           hud.flashEdge(PALETTE.accent.emerald);
-          voice.speak(
-            'tomb',
-            '传送台已启动！你已经真正理解了四维旋转的奥秘，准备前往下一关。',
-            { durationMs: 6500 }
-          );
+          voice.speak('tomb', '传送台已启动，准备前往下一关。', { durationMs: 5600 });
           teleporterOpen = true;
           hud.setTeleporterVisible(true);
           syncPauseState();
         }
       }
 
-      hints.update(dtSec, state.beat, state.completed);
+      hints.update(dtSec, state.beat, state.completed, state.getCurrentPuzzlePhase());
     }
 
-    // Always render 3D backdrop & HUD cleanly even behind modal
+    // Render 3D scene & synchronize anchored HUD cues
     sanctuary3D.syncFromState(state, dtSec);
     grabStage.updateCamera(camera, state, input, dtSec);
     grabStage.renderSideView(state);
     consolePanel.render(state);
-    hud.sync(state, hints.getSnapshot());
+    const orbAnchor = sanctuary3D.getOrbScreenAnchor(camera);
+    hud.sync(state, hints.getSnapshot(), orbAnchor);
     scene.render();
   };
 
@@ -474,7 +551,14 @@ function boot() {
     actions: {
       grab: () => {
         const r = state.setGrabbed(true);
-        if (r.grabbed) input.setGrabbed(true);
+        if (r.grabbed) {
+          input.setGrabbed(true);
+          hud.showWheelHandoffCue(4800);
+          if (!coached.firstGrabWheel) {
+            coached.firstGrabWheel = true;
+            voice.speak('tomb', '现在，滚轮转动的是你手里的球。', { durationMs: 5000 });
+          }
+        }
         return r;
       },
       release: () => releaseGrabCleanly({ keepVictoryBanner: false }),

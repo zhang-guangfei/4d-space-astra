@@ -1,28 +1,58 @@
 /**
  * Beyond 3D — Third-Person 4D Grab & Rotate Stage + Honest XZW Side-View Renderer
  *
- * Implements D8 & Pillar 4 (Geometric Honesty):
- * 1. Smoothly transitions the Babylon camera between First-Person Walk mode and Third-Person Grab Stage
- *    (plus elevated side-aligned inspection framing when Tab switches to Side View XZW).
- * 2. Renders the mathematically exact X-W cross-section on a dedicated holographic canvas:
- *    - Constant-radius rigid oblate disk (R = 1.00 m major axis, 2*eps = 0.070 m thickness) rotating rigidly in X-W
- *    - Unit reference circle R = 1.00 m proving the sphere is NEVER squashed
- *    - Monolith walls extending vertically across ALL W slices at |X| >= 0.082 m
- *    - Bright Cyan W = 0 slice line intersecting the tilted disk + Gold X-projection span markers
+ * Upgraded Discovery Flow:
+ * 1. Progressive HUD Reveal: Side View panel opens cleanly on Tab (not dumped immediately on E grab).
+ * 2. Matching △ (Left) & ○ (Right) Diameter Markers with smooth landing animation linking the 3D sphere
+ *    directly to the Side View's rigid 2.00m diameter bar.
+ * 3. Architectural Slit Continuity: Side View slit walls echo the 3D cathedral's brushed bronze jaws,
+ *    Vernier calibration ticks, and platinum/emerald glowing lips.
+ * 4. Live Collision-Layer Evidence: Glides the horizontal observation line cleanly to `state.inspectW`
+ *    and illuminates the exact wall-contact point where the protruding orb body hits the solid monolith!
  */
 
 import { lerp } from '../core/math4d.js';
 import { LEVEL14_CONFIG, sampleOblateDiskXW } from '../core/sanctuary-4d.js';
 import { PALETTE } from './phase-materials.js';
 
+function drawTriangleMarker(ctx, x, y, r, fillHex, strokeHex) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 1.12);
+  ctx.lineTo(x - r * 1.05, y + r * 0.85);
+  ctx.lineTo(x + r * 1.05, y + r * 0.85);
+  ctx.closePath();
+  ctx.fillStyle = fillHex;
+  ctx.fill();
+  ctx.strokeStyle = strokeHex;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCircleMarker(ctx, x, y, r, fillHex, strokeHex) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.92, 0, Math.PI * 2);
+  ctx.fillStyle = fillHex;
+  ctx.fill();
+  ctx.strokeStyle = strokeHex;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  ctx.restore();
+}
+
 export class GrabStageController {
   constructor(sideViewCanvas, sideViewPanel) {
     this.canvas = sideViewCanvas;
     this.panel = sideViewPanel;
     this.ctx = sideViewCanvas ? sideViewCanvas.getContext('2d') : null;
-    this.camPos = { x: 1.55, y: 1.85, z: -7.8 };
+    this.camPos = { x: 2.6, y: 1.85, z: -10.8 };
     this.camTarget = { x: 0, y: 2.2, z: -1.2 };
     this.blockFlash = 0;
+    this.wasSideViewOpen = false;
+    this.markerEntryProgress = 1;
+    this.elapsed = 0;
   }
 
   triggerBlockFlash() {
@@ -33,8 +63,19 @@ export class GrabStageController {
    * Smoothly interpolate Babylon FreeCamera pose for Walk / Grab / Tab Side View.
    */
   updateCamera(camera, state, input, dtSec) {
+    this.elapsed += dtSec;
     const smooth = Math.min(1, dtSec * 8.5);
-    this.blockFlash = Math.max(0, this.blockFlash - dtSec * 2.6);
+    this.blockFlash = Math.max(0, this.blockFlash - dtSec * 2.0);
+
+    // Track Tab Side View open transition to play smooth △ / ○ fly-in landing animation
+    const isSideOpen = state.viewMode === 'side_xzw';
+    if (isSideOpen && !this.wasSideViewOpen) {
+      this.markerEntryProgress = 0;
+    }
+    this.wasSideViewOpen = isSideOpen;
+    if (isSideOpen && this.markerEntryProgress < 1) {
+      this.markerEntryProgress = Math.min(1, this.markerEntryProgress + dtSec * 2.35);
+    }
 
     let desiredPos;
     let desiredTarget;
@@ -53,7 +94,6 @@ export class GrabStageController {
         y: desiredPos.y + Math.sin(input.pitch) * lookDist,
         z: desiredPos.z + Math.cos(input.yaw) * cosP * lookDist,
       };
-      // Responsive FPS look without sluggish lag when walking
       const fpSmooth = Math.min(1, dtSec * 18);
       this.camPos.x = lerp(this.camPos.x, desiredPos.x, fpSmooth);
       this.camPos.y = lerp(this.camPos.y, desiredPos.y, fpSmooth);
@@ -62,12 +102,7 @@ export class GrabStageController {
       this.camTarget.y = lerp(this.camTarget.y, desiredTarget.y, fpSmooth);
       this.camTarget.z = lerp(this.camTarget.z, desiredTarget.z, fpSmooth);
     } else {
-      // Zero-Occlusion 3-Zone Slit Camera Choreography (consistent in both Slice & Tab Side View):
-      // Zone 1 (South, orbZ <= -1.05): Diagonal hero framing of Passing Orb + Hairline Slit ahead
-      // Zone 2 (Slit Transit, -1.05 < orbZ < +1.15): Slit-centered periscope (X=0) looking straight
-      //         down the open 0.164m luminous hairline corridor — ZERO wall occlusion!
-      // Zone 3 (North Emergence, orbZ >= +1.15): North-side hero framing (Z > +1.2) looking back at
-      //         the orb emerging onto the North Golden Pedestal — ZERO wall occlusion!
+      // Zero-Occlusion 3-Zone Slit Camera Choreography
       const isSide = state.viewMode === 'side_xzw';
       if (state.orbZ <= -1.05) {
         desiredPos = {
@@ -81,7 +116,6 @@ export class GrabStageController {
           z: Math.min(2.6, state.orbZ + 1.6),
         };
       } else if (state.orbZ < 1.15) {
-        // Centered cleanly on X=0 looking straight through the open hairline slit!
         desiredPos = {
           x: 0.0,
           y: 2.08,
@@ -93,7 +127,6 @@ export class GrabStageController {
           z: state.orbZ + 0.9,
         };
       } else {
-        // Emerged cleanly on North side: camera stays strictly on North side (Z > +1.2)
         desiredPos = {
           x: isSide ? 2.5 : 2.35,
           y: isSide ? 2.75 : 2.6,
@@ -118,21 +151,22 @@ export class GrabStageController {
   }
 
   /**
-   * Render the mathematically exact X-W Side View diagram (Honest Dual View).
+   * Render the mathematically exact X-W Side View diagram with matching △ / ○ diameter markers,
+   * architectural 3D-matched slit walls, and live neighboring-layer collision evidence!
    */
   renderSideView(state) {
     if (!this.canvas || !this.ctx || !this.panel) return;
 
+    // Progressive Reveal: only open the full Side View panel when Tab Side View is active!
     const isExpanded = state.viewMode === 'side_xzw';
-    const shouldShow = state.grabbed || isExpanded;
-    this.panel.classList.toggle('is-visible', shouldShow);
+    this.panel.classList.toggle('is-visible', isExpanded);
     this.panel.classList.toggle('is-expanded', isExpanded);
-    if (!shouldShow) return;
+    if (!isExpanded) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = this.canvas.getBoundingClientRect();
-    const cssW = Math.max(220, Math.round(rect.width));
-    const cssH = Math.max(200, Math.round(rect.height));
+    const cssW = Math.max(280, Math.round(rect.width));
+    const cssH = Math.max(230, Math.round(rect.height));
     if (this.canvas.width !== cssW * dpr || this.canvas.height !== cssH * dpr) {
       this.canvas.width = cssW * dpr;
       this.canvas.height = cssH * dpr;
@@ -142,30 +176,31 @@ export class GrabStageController {
     ctx.save();
     ctx.scale(dpr, dpr);
 
-    // Clear dark obsidian scientific background
+    // Dark obsidian scientific backdrop
     ctx.fillStyle = '#120F0B';
     ctx.fillRect(0, 0, cssW, cssH);
 
     const cx = cssW * 0.5;
     const cy = cssH * 0.52;
-    const scale = Math.min(cssW, cssH) * 0.34; // 1.0 m -> scale px
+    const scale = Math.min(cssW, cssH) * 0.34;
     const toPxX = (x) => cx + x * scale;
     const toPxW = (w) => cy - w * scale;
 
     const ext = state.getExtents();
-    const activeW = state.grabbed ? 0 : state.playerPos[3];
-    const activeSlice = state.grabbed ? state.getSliceAtW0() : state.getSliceAtPlayerW();
-    const activeSliceY = Math.max(24, Math.min(cssH - 26, toPxW(activeW)));
+    const activeW = state.grabbed ? state.inspectW : state.playerPos[3];
+    const activeSlice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
+    const activeSliceY = Math.max(24, Math.min(cssH - 28, toPxW(activeW)));
     const isBlade = state.isBladeThinEnough();
     const inWallZ = state.isOrbOverlappingWallZ();
+    const isInspectingOtherW = state.grabbed && state.inspectModeActive && Math.abs(state.inspectW) > 0.01;
 
     // 1. Subtle coordinate grid
-    ctx.strokeStyle = 'rgba(138, 106, 47, 0.14)';
+    ctx.strokeStyle = 'rgba(138, 106, 47, 0.13)';
     ctx.lineWidth = 1;
     for (const v of [-1.0, -0.5, 0.5, 1.0]) {
       ctx.beginPath();
       ctx.moveTo(toPxX(v), 18);
-      ctx.lineTo(toPxX(v), cssH - 22);
+      ctx.lineTo(toPxX(v), cssH - 24);
       ctx.stroke();
 
       ctx.beginPath();
@@ -174,44 +209,63 @@ export class GrabStageController {
       ctx.stroke();
     }
 
-    // 2. All-W Monolith Wall Slit Corridor (|X| >= 0.082 m for ALL W!)
-    const slitHalfPx = LEVEL14_CONFIG.slitHalfWidth * scale;
-    const wallAlpha = inWallZ ? 0.32 : 0.16;
-    ctx.fillStyle =
-      this.blockFlash > 0.05
-        ? `rgba(255, 107, 107, ${0.18 + this.blockFlash * 0.3})`
-        : `rgba(138, 106, 47, ${wallAlpha})`;
-    ctx.fillRect(16, 18, Math.max(0, cx - slitHalfPx - 16), cssH - 40);
-    ctx.fillRect(cx + slitHalfPx, 18, Math.max(0, cssW - 16 - (cx + slitHalfPx)), cssH - 40);
+    // 2. Architectural Monolith Walls matching the 3D cathedral's brushed bronze jaws & Vernier ticks!
+    const slitHalfPx = Math.max(8, LEVEL14_CONFIG.slitHalfWidth * scale);
+    const wallTop = 18;
+    const wallBot = cssH - 24;
+    const wallAlpha = isInspectingOtherW ? 0.28 : inWallZ ? 0.32 : 0.18;
 
-    // Bright platinum hairline slit vertical lip lines (showing full-W continuity)
-    ctx.strokeStyle =
-      this.blockFlash > 0.05 ? PALETTE.accent.amberCoral : 'rgba(255, 246, 214, 0.72)';
-    ctx.lineWidth = inWallZ ? 1.8 : 1.2;
-    ctx.setLineDash(inWallZ ? [] : [4, 4]);
+    ctx.fillStyle = `rgba(116, 88, 38, ${wallAlpha})`;
+    ctx.fillRect(16, wallTop, Math.max(0, cx - slitHalfPx - 16), wallBot - wallTop);
+    ctx.fillRect(cx + slitHalfPx, wallTop, Math.max(0, cssW - 16 - (cx + slitHalfPx)), wallBot - wallTop);
+
+    // Matching brushed-bronze aperture jaw strips flanking the slit edges
+    ctx.fillStyle = 'rgba(164, 126, 54, 0.34)';
+    ctx.fillRect(cx - slitHalfPx - 7, wallTop, 7, wallBot - wallTop);
+    ctx.fillRect(cx + slitHalfPx, wallTop, 7, wallBot - wallTop);
+
+    // Matching Golden Vernier calibration hash ticks along both slit jaws
+    ctx.strokeStyle = 'rgba(247, 195, 70, 0.55)';
+    ctx.lineWidth = 1.2;
+    for (let ty = wallTop + 14; ty <= wallBot - 12; ty += 18) {
+      ctx.beginPath();
+      ctx.moveTo(cx - slitHalfPx - 6, ty);
+      ctx.lineTo(cx - slitHalfPx - 1.5, ty);
+      ctx.moveTo(cx + slitHalfPx + 1.5, ty);
+      ctx.lineTo(cx + slitHalfPx + 6, ty);
+      ctx.stroke();
+    }
+
+    // Glowing vertical Slit Lips (Platinum default -> Emerald when △ & ○ tuck inside -> Coral highlight on bump!)
+    const lipColor = isBlade
+      ? PALETTE.accent.emerald
+      : this.blockFlash > 0.05
+        ? PALETTE.accent.cyanW0
+        : PALETTE.accent.platinum;
+    ctx.strokeStyle = lipColor;
+    ctx.lineWidth = isBlade ? 2.6 : 2.0;
     for (const sign of [-1, 1]) {
       const lx = cx + sign * slitHalfPx;
       ctx.beginPath();
-      ctx.moveTo(lx, 18);
-      ctx.lineTo(lx, cssH - 22);
+      ctx.moveTo(lx, wallTop);
+      ctx.lineTo(lx, wallBot);
       ctx.stroke();
     }
-    ctx.setLineDash([]);
 
-    // 3. Unit Circle R = 1.00 m (honest geometric proof that major radius NEVER shrinks!)
-    ctx.strokeStyle = 'rgba(247, 195, 70, 0.34)';
-    ctx.lineWidth = 1.1;
+    // 3. Unit Reference Circle R = 1.00 m (honest geometric proof that △—○ diameter never shrinks!)
+    ctx.strokeStyle = 'rgba(247, 195, 70, 0.28)';
+    ctx.lineWidth = 1.0;
     ctx.setLineDash([3, 4]);
     ctx.beginPath();
     ctx.arc(cx, cy, LEVEL14_CONFIG.radiusR * scale, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 4. Primary Axes: Horizontal "我们所在的三维切面" & Vertical Arrowed Number Line "第四维度 w"
+    // 4. Primary Axes: Horizontal "我们所在的三维切面" (or gliding "相邻层观察") & Arrowed "第四维度 w"
     if (Math.abs(activeW) > 0.02) {
-      // Faint origin reference line at center
-      ctx.strokeStyle = 'rgba(77, 230, 211, 0.25)';
-      ctx.lineWidth = 1;
+      // Faint original layer line at center
+      ctx.strokeStyle = 'rgba(77, 230, 211, 0.28)';
+      ctx.lineWidth = 1.2;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(16, cy);
@@ -219,16 +273,16 @@ export class GrabStageController {
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.strokeStyle = 'rgba(77, 230, 211, 0.88)';
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = isInspectingOtherW ? PALETTE.accent.amberCoral : 'rgba(77, 230, 211, 0.88)';
+    ctx.lineWidth = isInspectingOtherW ? 2.2 : 1.8;
     ctx.beginPath();
     ctx.moveTo(16, activeSliceY);
     ctx.lineTo(cssW - 16, activeSliceY);
     ctx.stroke();
 
-    // Vertical Fourth-Dimension w Arrowed Number Line with scale ticks
+    // Vertical Fourth-Dimension w Arrowed Number Line
     const axisTop = 20;
-    const axisBot = cssH - 24;
+    const axisBot = cssH - 26;
     ctx.strokeStyle = PALETTE.accent.goldWPos;
     ctx.lineWidth = 1.8;
     ctx.beginPath();
@@ -236,7 +290,6 @@ export class GrabStageController {
     ctx.lineTo(cx, axisTop);
     ctx.stroke();
 
-    // Crisp upward arrowhead at +w tip
     ctx.fillStyle = PALETTE.accent.goldWPos;
     ctx.beginPath();
     ctx.moveTo(cx, axisTop - 4);
@@ -245,7 +298,6 @@ export class GrabStageController {
     ctx.closePath();
     ctx.fill();
 
-    // Number-line scale tick marks (-1, +1) along w axis
     ctx.strokeStyle = 'rgba(247, 195, 70, 0.72)';
     ctx.lineWidth = 1.2;
     for (const wTick of [-1, 1]) {
@@ -256,20 +308,32 @@ export class GrabStageController {
       ctx.stroke();
     }
 
-    // 5. Projection drop lines showing xMax(theta) on X-axis
-    const xMaxPx = ext.xMax * scale;
-    ctx.strokeStyle = isBlade ? 'rgba(105, 240, 174, 0.75)' : 'rgba(247, 195, 70, 0.55)';
-    ctx.lineWidth = 1;
+    // 5. Rigid 4D Sphere Cross-Section in X-W rotated by exact thetaRad
+    const tipX = Math.cos(state.thetaRad) * LEVEL14_CONFIG.radiusR;
+    const tipW = Math.sin(state.thetaRad) * LEVEL14_CONFIG.radiusR;
+
+    // Horizontal span vertical drop guides from △ and ○ down toward the slit gap!
+    const triTargetX = toPxX(-tipX);
+    const triTargetY = toPxW(-tipW);
+    const circTargetX = toPxX(tipX);
+    const circTargetY = toPxW(tipW);
+
+    ctx.strokeStyle = isBlade
+      ? 'rgba(105, 240, 174, 0.68)'
+      : this.blockFlash > 0.05 || isInspectingOtherW
+        ? 'rgba(255, 107, 107, 0.78)'
+        : 'rgba(247, 195, 70, 0.45)';
+    ctx.lineWidth = 1.1;
     ctx.setLineDash([2, 3]);
-    for (const sign of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(cx + sign * xMaxPx, cy - scale * 1.05);
-      ctx.lineTo(cx + sign * xMaxPx, cssH - 24);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(triTargetX, triTargetY);
+    ctx.lineTo(triTargetX, wallBot);
+    ctx.moveTo(circTargetX, circTargetY);
+    ctx.lineTo(circTargetX, wallBot);
+    ctx.stroke();
     ctx.setLineDash([]);
 
-    // 6. Rigid 4D Oblate Disk rotated in X-W by exact thetaRad
+    // Rigid disk body
     const diskPts = sampleOblateDiskXW(state.thetaRad, 72);
     ctx.beginPath();
     diskPts.forEach((pt, idx) => {
@@ -281,71 +345,110 @@ export class GrabStageController {
     ctx.closePath();
     ctx.fillStyle = isBlade
       ? 'rgba(105, 240, 174, 0.28)'
-      : 'rgba(77, 230, 211, 0.24)';
+      : 'rgba(247, 195, 70, 0.22)';
     ctx.fill();
     ctx.strokeStyle = isBlade ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
     ctx.lineWidth = 2.2;
     ctx.stroke();
 
-    // Rigid major-axis diameter bar (explicitly demonstrating constant 2.00 m length)
-    const tipX = Math.cos(state.thetaRad) * LEVEL14_CONFIG.radiusR;
-    const tipW = Math.sin(state.thetaRad) * LEVEL14_CONFIG.radiusR;
-    ctx.strokeStyle = PALETTE.accent.platinum;
-    ctx.lineWidth = 1.6;
+    // Rigid △ — ○ diameter spine (constant 2.00m length!)
+    ctx.strokeStyle = isBlade ? PALETTE.accent.emerald : PALETTE.accent.platinum;
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(toPxX(-tipX), toPxW(-tipW));
-    ctx.lineTo(toPxX(tipX), toPxW(tipW));
+    ctx.moveTo(triTargetX, triTargetY);
+    ctx.lineTo(circTargetX, circTargetY);
     ctx.stroke();
 
-    // Endpoint beacons on unit circle
-    for (const sign of [-1, 1]) {
-      ctx.fillStyle = PALETTE.accent.platinum;
-      ctx.beginPath();
-      ctx.arc(toPxX(sign * tipX), toPxW(sign * tipW), 3.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 7. Highlight intersection segment on our 3D slice in vivid Cyan
+    // 6. Highlight intersection segment on the active observation layer (w = 0 or inspectW!)
     if (activeSlice.intersects) {
-      ctx.strokeStyle = PALETTE.accent.cyanW0;
-      ctx.lineWidth = 4.2;
+      const segColor = isInspectingOtherW ? PALETTE.accent.amberCoral : PALETTE.accent.cyanW0;
+      ctx.strokeStyle = segColor;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(toPxX(activeSlice.xCenter - activeSlice.semiX), activeSliceY);
-      ctx.lineTo(toPxX(activeSlice.xCenter + activeSlice.semiX), activeSliceY);
+      ctx.moveTo(toPxX(activeSlice.xCenter - Math.max(0.025, activeSlice.semiX)), activeSliceY);
+      ctx.lineTo(toPxX(activeSlice.xCenter + Math.max(0.025, activeSlice.semiX)), activeSliceY);
       ctx.stroke();
+
+      // If inspecting neighboring layer OR bumping wall: highlight the EXACT wall contact spot!
+      const outsideSlit = Math.abs(activeSlice.xCenter) > LEVEL14_CONFIG.slitHalfWidth;
+      if ((isInspectingOtherW || this.blockFlash > 0.05) && outsideSlit && !isBlade) {
+        const hitX = toPxX(activeSlice.xCenter);
+        const pulseR = 9 + Math.sin(this.elapsed * 8) * 3;
+        ctx.strokeStyle = PALETTE.accent.amberCoral;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(hitX, activeSliceY, pulseR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 107, 107, 0.26)';
+        ctx.beginPath();
+        ctx.arc(hitX, activeSliceY, pulseR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = '700 10.5px "Inter", "PingFang SC", sans-serif';
+        ctx.fillStyle = '#FFD1D1';
+        ctx.textAlign = hitX > cx ? 'left' : 'right';
+        ctx.fillText('撞墙接触处', hitX + (hitX > cx ? 13 : -13), activeSliceY + 19);
+      }
     }
 
-    // 8. Clear Human-Readable Labels (ZERO "W=0 切片" jargon!)
-    const isCompact = cssW < 340;
-    ctx.font = `600 ${isCompact ? 10 : 11}px "Inter", "PingFang SC", sans-serif`;
+    // If bumped while Side View already open at w=0, also pulse protruding △ / ○ wall overlap!
+    if (this.blockFlash > 0.05 && !isBlade && !isInspectingOtherW) {
+      for (const [ex, ey] of [
+        [triTargetX, triTargetY],
+        [circTargetX, circTargetY],
+      ]) {
+        if (Math.abs(ex - cx) > slitHalfPx) {
+          ctx.strokeStyle = PALETTE.accent.amberCoral;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.arc(ex, ey, 11 + this.blockFlash * 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 7. Matching Hollow △ (Left) & ○ (Right) Diameter Markers with smooth fly-in landing animation!
+    const tEase = 1 - Math.pow(1 - this.markerEntryProgress, 3);
+    const triX = lerp(cx - 46, triTargetX, tEase);
+    const triY = lerp(16, triTargetY, tEase);
+    const circX = lerp(cx + 46, circTargetX, tEase);
+    const circY = lerp(16, circTargetY, tEase);
+
+    const triStroke = isBlade ? PALETTE.accent.emerald : '#FFB84D';
+    const circStroke = isBlade ? PALETTE.accent.emerald : PALETTE.accent.platinum;
+    drawTriangleMarker(ctx, triX, triY, 7.6, '#14100A', triStroke);
+    drawCircleMarker(ctx, circX, circY, 7.0, '#14100A', circStroke);
+
+    // 8. Clear Human-Readable Labels (ZERO "W=0切片" jargon!)
+    ctx.font = '600 11px "Inter", "PingFang SC", sans-serif';
     ctx.fillStyle = PALETTE.accent.goldWPos;
     ctx.textAlign = 'left';
     ctx.fillText('第四维度 w ↑', cx + 8, axisTop + 10);
 
-    ctx.fillStyle = PALETTE.accent.cyanW0;
+    ctx.fillStyle = isInspectingOtherW ? '#FFB4B4' : PALETTE.accent.cyanW0;
     ctx.textAlign = 'right';
-    ctx.fillText('我们所在的三维切面', cssW - 12, Math.max(36, activeSliceY - 7));
-
-    ctx.font = `600 ${isCompact ? 10 : 11}px "JetBrains Mono", ui-monospace, monospace`;
-    ctx.fillStyle = PALETTE.accent.platinum;
-    ctx.textAlign = 'left';
     ctx.fillText(
-      isCompact
-        ? `R=${ext.rigidRadiusInvariant.toFixed(2)}m 恒定`
-        : `R = ${ext.rigidRadiusInvariant.toFixed(2)}m (从未压扁)`,
-      12,
-      cssH - 8
-    );
-
-    ctx.textAlign = 'right';
-    ctx.fillStyle = isBlade ? PALETTE.accent.emerald : PALETTE.accent.goldWPos;
-    ctx.fillText(
-      isCompact
-        ? `总宽 ${ext.xMax.toFixed(3)}m ${isBlade ? '✓' : '>0.082'}`
-        : `四维总半宽 ${ext.xMax.toFixed(3)}m ${isBlade ? '✓ 可过缝' : '> 0.082m'}`,
+      isInspectingOtherW ? '相邻层观察' : '我们所在的三维切面',
       cssW - 12,
-      cssH - 8
+      Math.max(36, activeSliceY - 9)
     );
+
+    // Bottom status guidance — human intuition first!
+    ctx.font = '600 11px "Inter", "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = isBlade
+      ? PALETTE.accent.emerald
+      : isInspectingOtherW
+        ? '#FFD1D1'
+        : PALETTE.accent.platinum;
+    const footerMsg = isBlade
+      ? '△ 与 ○ 已全部收进亮缝之间 — 可以往前推了'
+      : isInspectingOtherW
+        ? '这一层仍有同一道墙，球身正抵在缝外墙面上'
+        : '滚动滚轮，观察 △ 与 ○ 如何向两道亮缝之间收拢';
+    ctx.fillText(footerMsg, cx, cssH - 8);
     ctx.textAlign = 'left';
 
     ctx.restore();

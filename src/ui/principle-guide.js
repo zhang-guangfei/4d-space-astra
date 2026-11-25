@@ -514,6 +514,16 @@ export class PrincipleGuideController {
       ctx.stroke();
     }
 
+    // Matching △ and ○ diameter endpoint markers on the 3D coin
+    const cTri = project(-R * cosT, 0, -R * sinT);
+    const cCirc = project(R * cosT, 0, R * sinT);
+    ctx.font = '700 13px "Inter", "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = cfg.canPass ? PALETTE.accent.emerald : '#FFB84D';
+    ctx.fillText('△', cTri.sx, cTri.sy + 4);
+    ctx.fillStyle = cfg.canPass ? PALETTE.accent.emerald : PALETTE.accent.platinum;
+    ctx.fillText('○', cCirc.sx, cCirc.sy + 4);
+
     // Plane label
     const pPlaneTag = project(1.58, -1.18, 0);
     ctx.font = '600 12px "Inter", "PingFang SC", sans-serif';
@@ -709,6 +719,16 @@ export class PrincipleGuideController {
       ctx.stroke();
     }
     ctx.setLineDash([]);
+
+    // Matching △ and ○ diameter endpoint markers on the 3D sphere
+    const sTri = project(-R * cosT, glideY, -R * sinT);
+    const sCirc = project(R * cosT, glideY, R * sinT);
+    ctx.font = '700 13px "Inter", "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = cfg.canPass ? PALETTE.accent.emerald : '#FFB84D';
+    ctx.fillText('△', sTri.sx, sTri.sy + 4);
+    ctx.fillStyle = cfg.canPass ? PALETTE.accent.emerald : PALETTE.accent.platinum;
+    ctx.fillText('○', sCirc.sx, sCirc.sy + 4);
 
     // 5. Crisp Slab Label: "我们所在的三维切面" (NEVER "W=0 切片"!)
     const pSlabLabel = project(1.66, -1.24, 0.06);

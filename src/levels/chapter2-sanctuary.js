@@ -45,6 +45,10 @@ export class Level14SanctuaryScene {
     this.vaultAstrolabeRings = [];
     this.elapsed = 0;
     this.barrierFlash = 0;
+    this.sliceConfirmPulse = 0;
+    this.contactHighlight = 0;
+    this.contactX = 0.55;
+    this.openingPulseTimer = 4.2;
     this.hintHighlight = false;
     this.gateOpenProgress = 0;
     this.monolithOpenProgress = 0;
@@ -852,9 +856,11 @@ export class Level14SanctuaryScene {
 
   /**
    * Build the AAA Crystalline 2.0m Passing Orb (通行珠):
-   * - Clearcoat engraved energy crystal PBR core (`orbSliceCore`)
-   * - Machined metallic gold/platinum SO(3) gimbal rings (`orbMeridianRoot`, tracks true W=0 slice!)
-   * - Translucent 4D projection envelope (`orbProjShell`, shown ONLY in Tab Side View per Option A!)
+   * - Clearcoat engraved energy crystal PBR core (`orbSliceCore`) — the solid cyan part staying in our 3D layer
+   * - Dedicated dimmable meridian rings (`orbMeridianRoot`) that soften when tilted so they never read as an outer hoop
+   * - Matching △ (left -X) and ○ (right +X) horizontal diameter markers linking the 3D sphere directly to the Side View!
+   * - Translucent 4D projection envelope (`orbProjShell` + △/○ beacons, shown in Tab Side View)
+   * - Focused wall-contact highlight patch (`contactPatchMesh`) lighting up the exact protruding collision spot!
    */
   _buildPassingOrb() {
     const B = this.B;
@@ -864,7 +870,7 @@ export class Level14SanctuaryScene {
     this.orbRoot.position.set(0, LEVEL14_CONFIG.orbCenterY, LEVEL14_CONFIG.orbStartZ);
     this.orbRoot.parent = this.root;
 
-    // 1. Exact W-slice AAA Crystal PBR Core
+    // 1. Exact W-slice AAA Crystal PBR Core ("留在这一层的部分")
     this.orbCoreMat = createPassingOrbCrystalPBR(s);
     this.orbSliceCore = B.MeshBuilder.CreateSphere('orb_slice_core', { diameter: 2.0, segments: 36 }, s);
     this.orbSliceCore.material = this.orbCoreMat;
@@ -872,7 +878,7 @@ export class Level14SanctuaryScene {
     this.orbSliceCore.parent = this.orbRoot;
     this._registerMesh(this.orbSliceCore, { freeze: false, mirror: true, shadow: true });
 
-    // 2. 4D Projection Envelope (hidden by default per Option A; visible in Tab Side View)
+    // 2. 4D Projection Envelope (hidden by default; visible in Tab Side View)
     this.orbProjRoot = new B.TransformNode('orb_4d_projection_root', s);
     this.orbProjRoot.parent = this.orbRoot;
 
@@ -883,60 +889,140 @@ export class Level14SanctuaryScene {
     this.orbProjShell.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.orbProjShell.parent = this.orbProjRoot;
 
-    // 3. Machined Metallic SO(3) Meridian & Equator Gimbal Rings (tracks true W=0 slice!)
+    // 3. Dedicated dimmable decorative meridian rings (dim cleanly upon tilt to avoid "outer hoop" confusion!)
+    this.orbRingMat = new B.PBRMaterial('aaa_orb_meridian_ring_mat', s);
+    this.orbRingMat.albedoColor = B.Color3.FromHexString(PALETTE.accent.goldWPos);
+    this.orbRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(1.1);
+    this.orbRingMat.metallic = 0.85;
+    this.orbRingMat.roughness = 0.2;
+    this.orbRingMat.disableDepthWrite = false;
+    this.orbRingMat.needDepthPrePass = false;
+
+    this.orbCenterRingMat = new B.PBRMaterial('aaa_orb_center_ring_mat', s);
+    this.orbCenterRingMat.albedoColor = B.Color3.FromHexString(PALETTE.accent.platinum);
+    this.orbCenterRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(1.1);
+    this.orbCenterRingMat.metallic = 0.2;
+    this.orbCenterRingMat.roughness = 0.2;
+    this.orbCenterRingMat.disableDepthWrite = false;
+    this.orbCenterRingMat.needDepthPrePass = false;
+
     this.orbMeridianRoot = new B.TransformNode('orb_so3_meridians', s);
     this.orbMeridianRoot.parent = this.orbRoot;
 
     const ringXZ = B.MeshBuilder.CreateTorus(
       'orb_ring_xz',
-      { diameter: 2.05, thickness: 0.034, tessellation: 48 },
+      { diameter: 2.04, thickness: 0.028, tessellation: 48 },
       s
     );
-    ringXZ.material = this.emissiveGoldTrimMat;
+    ringXZ.material = this.orbRingMat;
     ringXZ.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
     ringXZ.parent = this.orbMeridianRoot;
     this._registerMesh(ringXZ, { freeze: false, mirror: true });
 
     const ringXY = B.MeshBuilder.CreateTorus(
       'orb_ring_xy',
-      { diameter: 2.05, thickness: 0.034, tessellation: 48 },
+      { diameter: 2.04, thickness: 0.028, tessellation: 48 },
       s
     );
     ringXY.rotation.x = Math.PI * 0.5;
-    ringXY.material = this.emissiveGoldTrimMat;
+    ringXY.material = this.orbRingMat;
     ringXY.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
     ringXY.parent = this.orbMeridianRoot;
     this._registerMesh(ringXY, { freeze: false, mirror: true });
 
     const ringYZ = B.MeshBuilder.CreateTorus(
       'orb_ring_yz',
-      { diameter: 2.07, thickness: 0.04, tessellation: 48 },
+      { diameter: 2.06, thickness: 0.032, tessellation: 48 },
       s
     );
     ringYZ.rotation.z = Math.PI * 0.5;
-    ringYZ.material = this.emissivePlatinumMat;
+    ringYZ.material = this.orbCenterRingMat;
     ringYZ.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
     ringYZ.parent = this.orbMeridianRoot;
     this._registerMesh(ringYZ, { freeze: false, mirror: true });
 
-    // Glowing Polar Octahedron Landmark Jewels (north & south)
-    const jewelTop = B.MeshBuilder.CreatePolyhedron('orb_so3_jewel_top', { type: 1, size: 0.11 }, s);
-    jewelTop.position.set(0, 1.05, 0);
-    jewelTop.material = this.emissivePlatinumMat;
-    jewelTop.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
-    jewelTop.parent = this.orbMeridianRoot;
+    // 4. Horizontal Diameter Polar Landmark Markers: △ (Left -X) and ○ (Right +X)!
+    // Visible at 0°, smoothly drift outward & fade out when tilted (and return reversibly at 0°!),
+    // while matching △ & ○ beacons ride on the 4D envelope in Tab Side View!
+    this.poleTriMat = new B.PBRMaterial('orb_pole_tri_mat', s);
+    this.poleTriMat.albedoColor = B.Color3.FromHexString('#FFB84D');
+    this.poleTriMat.emissiveColor = B.Color3.FromHexString('#FFB84D').scale(1.7);
+    this.poleTriMat.metallic = 0.2;
+    this.poleTriMat.roughness = 0.18;
+    this.poleTriMat.alpha = 1.0;
+    this.poleTriMat.needDepthPrePass = false;
 
-    const jewelBot = B.MeshBuilder.CreatePolyhedron('orb_so3_jewel_bot', { type: 1, size: 0.085 }, s);
-    jewelBot.position.set(0, -1.05, 0);
-    jewelBot.material = this.emissiveGoldTrimMat;
-    jewelBot.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
-    jewelBot.parent = this.orbMeridianRoot;
+    this.poleCircMat = new B.PBRMaterial('orb_pole_circ_mat', s);
+    this.poleCircMat.albedoColor = B.Color3.FromHexString(PALETTE.accent.platinum);
+    this.poleCircMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(1.7);
+    this.poleCircMat.metallic = 0.2;
+    this.poleCircMat.roughness = 0.18;
+    this.poleCircMat.alpha = 1.0;
+    this.poleCircMat.needDepthPrePass = false;
 
-    // Stationary Vertical YZ Rotation-Plane Halo (strictly lies in X=0 plane during Grab Stage)
-    this.yzHaloMat = createGhostMaterial(s, 'yz_rotation_plane_halo', PALETTE.accent.cyanW0, 0.34);
+    // Crisp 3D Upright Triangle △ at -X pole (tessellation: 3 torus rotated apex-up!)
+    this.orbPoleTri = B.MeshBuilder.CreateTorus(
+      'orb_pole_triangle',
+      { diameter: 0.30, thickness: 0.056, tessellation: 3 },
+      s
+    );
+    this.orbPoleTri.position.set(-1.08, 0, 0);
+    this.orbPoleTri.rotation.x = Math.PI * 0.5;
+    this.orbPoleTri.rotation.z = Math.PI * 0.5;
+    this.orbPoleTri.material = this.poleTriMat;
+    this.orbPoleTri.isPickable = false;
+    this.orbPoleTri.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
+    this.orbPoleTri.parent = this.orbRoot;
+
+    // Crisp 3D Circle ○ at +X pole
+    this.orbPoleCirc = B.MeshBuilder.CreateTorus(
+      'orb_pole_circle',
+      { diameter: 0.28, thickness: 0.054, tessellation: 24 },
+      s
+    );
+    this.orbPoleCirc.position.set(1.08, 0, 0);
+    this.orbPoleCirc.rotation.x = Math.PI * 0.5;
+    this.orbPoleCirc.material = this.poleCircMat;
+    this.orbPoleCirc.isPickable = false;
+    this.orbPoleCirc.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
+    this.orbPoleCirc.parent = this.orbRoot;
+
+    // Tab Side View 4D-Envelope △ & ○ beacons (never squashed; ride at exact ±ext.xMax!)
+    this.projBeaconMat = new B.PBRMaterial('orb_proj_beacon_mat', s);
+    this.projBeaconMat.albedoColor = B.Color3.FromHexString(PALETTE.accent.goldWPos);
+    this.projBeaconMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(1.85);
+    this.projBeaconMat.metallic = 0.2;
+    this.projBeaconMat.roughness = 0.16;
+    this.projBeaconMat.needDepthPrePass = false;
+
+    this.orbProjTri = B.MeshBuilder.CreateTorus(
+      'orb_proj_triangle',
+      { diameter: 0.30, thickness: 0.058, tessellation: 3 },
+      s
+    );
+    this.orbProjTri.rotation.x = Math.PI * 0.5;
+    this.orbProjTri.rotation.z = Math.PI * 0.5;
+    this.orbProjTri.material = this.projBeaconMat;
+    this.orbProjTri.isPickable = false;
+    this.orbProjTri.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
+    this.orbProjTri.parent = this.orbRoot;
+
+    this.orbProjCirc = B.MeshBuilder.CreateTorus(
+      'orb_proj_circle',
+      { diameter: 0.28, thickness: 0.055, tessellation: 24 },
+      s
+    );
+    this.orbProjCirc.rotation.x = Math.PI * 0.5;
+    this.orbProjCirc.material = this.projBeaconMat;
+    this.orbProjCirc.isPickable = false;
+    this.orbProjCirc.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
+    this.orbProjCirc.parent = this.orbRoot;
+
+    // Stationary Vertical YZ Rotation-Plane Halo (shown gently ONLY at 0°; hidden once tilted!)
+    this.yzHaloMat = createGhostMaterial(s, 'yz_rotation_plane_halo', PALETTE.accent.cyanW0, 0.30);
     this.yzPlaneHalo = B.MeshBuilder.CreateTorus(
       'yz_plane_halo',
-      { diameter: 2.62, thickness: 0.025, tessellation: 48 },
+      { diameter: 2.52, thickness: 0.02, tessellation: 48 },
       s
     );
     this.yzPlaneHalo.rotation.z = Math.PI * 0.5;
@@ -944,6 +1030,32 @@ export class Level14SanctuaryScene {
     this.yzPlaneHalo.isPickable = false;
     this.yzPlaneHalo.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
     this.yzPlaneHalo.parent = this.orbRoot;
+
+    // Focused Wall-Contact Collision Highlight Patch (lights up ONLY the protruding contact region on the wall!)
+    this.contactPatchMat = createGhostMaterial(s, 'wall_contact_patch_mat', PALETTE.accent.amberCoral, 0.34);
+    this.contactPatchMesh = B.MeshBuilder.CreateDisc(
+      'wall_contact_patch',
+      { radius: 0.72, tessellation: 32 },
+      s
+    );
+    this.contactPatchMesh.position.set(0.55, LEVEL14_CONFIG.orbCenterY, LEVEL14_CONFIG.wallZMin - 0.09);
+    this.contactPatchMesh.material = this.contactPatchMat;
+    this.contactPatchMesh.isVisible = false;
+    this.contactPatchMesh.isPickable = false;
+    this.contactPatchMesh.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
+    this.contactPatchMesh.parent = this.root;
+
+    // Crisp Equatorial Contour Ring around North Target Silhouette (makes full-sphere goal shape unmistakable!)
+    this.northTargetContour = B.MeshBuilder.CreateTorus(
+      'north_target_contour',
+      { diameter: 2.04, thickness: 0.032, tessellation: 48 },
+      s
+    );
+    this.northTargetContour.position.set(0, LEVEL14_CONFIG.orbCenterY, LEVEL14_CONFIG.orbTargetZ);
+    this.northTargetContour.material = this.emissiveGoldTrimMat;
+    this.northTargetContour.isPickable = false;
+    this.northTargetContour.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
+    this.northTargetContour.parent = this.root;
   }
 
   _buildAstronaut08() {
@@ -1091,14 +1203,59 @@ export class Level14SanctuaryScene {
     this.barrierFlash = 1.0;
   }
 
+  /**
+   * Focused visual feedback when a tilted thin slice bumps the wall:
+   * 1. Flashes the thin cyan slice & both slit lips cyan-platinum ("this slice IS thin enough!")
+   * 2. Highlights the exact protruding 4D wing + wall contact area instead of the whole wall!
+   */
+  triggerTiltedBump(xContact = 0.55) {
+    this.sliceConfirmPulse = 1.0;
+    this.contactHighlight = 1.0;
+    this.contactX = Math.max(0.22, Math.abs(xContact));
+  }
+
+  triggerOpeningPedestalSpotlight() {
+    this.openingPulseTimer = 4.2;
+  }
+
   setHintHighlight(active) {
     this.hintHighlight = Boolean(active);
+  }
+
+  /**
+   * Project the Passing Orb's 3D world center into 2D screen viewport coordinates
+   * so subtle floating cues ("留在这一层的部分" / scroll handoff) anchor naturally beside the orb.
+   */
+  getOrbScreenAnchor(camera) {
+    if (!camera || !this.orbRoot) return null;
+    const B = this.B;
+    const engine = this.scene.getEngine();
+    const w = engine.getRenderWidth();
+    const h = engine.getRenderHeight();
+    if (!w || !h) return null;
+    const pos = this.orbRoot.getAbsolutePosition();
+    const viewport = camera.viewport.toGlobal(w, h);
+    const projected = B.Vector3.Project(
+      pos,
+      B.Matrix.Identity(),
+      this.scene.getTransformMatrix(),
+      viewport
+    );
+    const dpr = engine.getHardwareScalingLevel ? 1 / engine.getHardwareScalingLevel() : 1;
+    return {
+      x: projected.x / dpr,
+      y: projected.y / dpr,
+      inFront: projected.z >= 0 && projected.z <= 1,
+    };
   }
 
   syncFromState(state, dtSec) {
     const B = this.B;
     this.elapsed += dtSec;
     this.barrierFlash = Math.max(0, this.barrierFlash - dtSec * 2.4);
+    this.sliceConfirmPulse = Math.max(0, this.sliceConfirmPulse - dtSec * 1.15);
+    this.contactHighlight = Math.max(0, this.contactHighlight - dtSec * 0.9);
+    this.openingPulseTimer = Math.max(0, this.openingPulseTimer - dtSec);
 
     // 0. Majestic slow counter-rotation of the high vault astrolabe rings
     for (const r of this.vaultAstrolabeRings) {
@@ -1115,18 +1272,23 @@ export class Level14SanctuaryScene {
     const monolithEased = 1 - Math.pow(1 - this.monolithOpenProgress, 3);
 
     const ext = state.getExtents();
-    const slice = state.grabbed ? state.getSliceAtW0() : state.getSliceAtPlayerW();
+    // In Grab Stage, observe at `inspectW` (normally 0, glides to colliding neighboring layer on Tab after tilted bump!)
+    const slice = state.grabbed ? state.getSliceAtGrabObserveW() : state.getSliceAtPlayerW();
     const isBlade = state.isBladeThinEnough();
+    const distFrom0 = Math.min(
+      Math.abs(state.thetaDeg % 180),
+      Math.abs(180 - (state.thetaDeg % 180))
+    );
+    const isTilted = distFrom0 > 3.0;
+    const isInspectingOtherW = state.grabbed && state.inspectModeActive && Math.abs(state.inspectW) > 0.01;
 
     // 1. Flanking W-layer reference arches (solid when player W matches, ghost otherwise)
-    const playerW = state.playerPos[3];
+    const activeW = state.grabbed ? state.inspectW : state.playerPos[3];
     for (const grp of this.wLayerGroups) {
-      applyPhaseToMaterial(grp.mat, playerW - grp.w, { solidThreshold: 0.55, ghostAlpha: 0.34 });
+      applyPhaseToMaterial(grp.mat, activeW - grp.w, { solidThreshold: 0.55, ghostAlpha: 0.34 });
     }
 
     // 2. Passing Orb exact 4D geometry (Option A: eps=0.001m pure 3D slice default!)
-    // Once unlocked as the key, the restored orb levitates upward above the North Pedestal
-    // so the player can walk unobstructed straight beneath it to the North Teleportation Pad!
     const hoverOffset = state.completed
       ? monolithEased * 2.15 + Math.sin(this.elapsed * 2.2) * 0.06
       : Math.sin(this.elapsed * 2.0) * 0.04;
@@ -1141,19 +1303,58 @@ export class Level14SanctuaryScene {
       const sz = Math.max(0.05, slice.semiZ);
       this.orbSliceCore.scaling.set(sx, sy, sz);
 
-      this.orbMeridianRoot.setEnabled(true);
+      // Decorative meridian rings stay crisp on full sphere, dim & soften cleanly upon tilt
+      // so they NEVER compete with the cyan slice or look like an outer iron hoop!
+      this.orbMeridianRoot.setEnabled(!isInspectingOtherW);
       this.orbMeridianRoot.position.set(slice.xCenter, 0, 0);
       this.orbMeridianRoot.scaling.set(sx, sy, sz);
+      const ringGlow = isTilted ? 0.14 : 1.05;
+      this.orbRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(ringGlow);
+      this.orbCenterRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(
+        isTilted ? 0.28 : 1.05
+      );
     } else {
       this.orbSliceCore.setEnabled(false);
       this.orbMeridianRoot.setEnabled(false);
     }
 
-    // Option A: Default view shows ONLY pure 3D slice; Tab reveals translucent 4D projection envelope
-    const show4DProjection = state.viewMode === 'side_xzw';
+    // 2b. Horizontal Diameter Polar Markers △ (-X) & ○ (+X) on the 3D sphere:
+    // Visible at 0°, smoothly drift outward & fade out over 2°..15° when tilted (reversibly return at 0°!)
+    const poleFade = Math.max(0, Math.min(1, 1 - (distFrom0 - 2.0) / 13.0));
+    const showSlicePoles = !state.completed && poleFade > 0.04 && state.viewMode !== 'side_xzw';
+    this.orbPoleTri.setEnabled(showSlicePoles);
+    this.orbPoleCirc.setEnabled(showSlicePoles);
+    if (showSlicePoles) {
+      const driftOut = (1 - poleFade) * 0.32;
+      this.orbPoleTri.position.set(-(1.08 + driftOut), 0, 0);
+      this.orbPoleCirc.position.set(1.08 + driftOut, 0, 0);
+      const sPole = 0.65 + 0.35 * poleFade;
+      this.orbPoleTri.scaling.setAll(sPole);
+      this.orbPoleCirc.scaling.setAll(sPole);
+      this.poleTriMat.alpha = poleFade;
+      this.poleCircMat.alpha = poleFade;
+    }
+
+    // 2c. Tab Side View 4D Projection Envelope + matching rotating △ & ○ beacons at ±ext.xMax!
+    const show4DProjection = state.viewMode === 'side_xzw' && !state.completed;
     this.orbProjShell.setEnabled(show4DProjection);
+    this.orbProjTri.setEnabled(show4DProjection);
+    this.orbProjCirc.setEnabled(show4DProjection);
     if (show4DProjection) {
       this.orbProjRoot.scaling.set(Math.max(0.01, ext.xMax), 1.0, 1.0);
+      const beaconX = Math.max(0.06, ext.xMax + 0.08);
+      this.orbProjTri.position.set(-beaconX, 0, 0);
+      this.orbProjCirc.position.set(beaconX, 0, 0);
+      const beaconHex = isBlade
+        ? PALETTE.accent.emerald
+        : this.contactHighlight > 0.05 || isInspectingOtherW
+          ? PALETTE.accent.amberCoral
+          : PALETTE.accent.goldWPos;
+      this.projBeaconMat.albedoColor = B.Color3.FromHexString(beaconHex);
+      this.projBeaconMat.emissiveColor = B.Color3.FromHexString(beaconHex).scale(1.85);
+      this.orbProjShellMat.emissiveColor = B.Color3.FromHexString(
+        isBlade ? PALETTE.accent.emerald : PALETTE.accent.goldWPos
+      ).scale(0.85);
     } else {
       this.orbProjRoot.scaling.set(1.0, 1.0, 1.0);
     }
@@ -1170,16 +1371,22 @@ export class Level14SanctuaryScene {
       accentHex = PALETTE.accent.platinum;
     } else if (isBlade) {
       accentHex = PALETTE.accent.emerald;
+    } else if (isInspectingOtherW) {
+      accentHex = PALETTE.accent.amberCoral;
     }
     const accentColor = B.Color3.FromHexString(accentHex);
     this.orbCoreMat.albedoColor = accentColor;
-    this.orbCoreMat.emissiveColor = accentColor.scale(state.completed ? 1.15 : isBlade ? 0.92 : 0.55);
+    const confirmBoost = this.sliceConfirmPulse * 0.75;
+    this.orbCoreMat.emissiveColor = accentColor.scale(
+      (state.completed ? 1.15 : isBlade ? 0.95 : 0.62) + confirmBoost
+    );
     this.orbLight.diffuse = accentColor;
 
-    this.yzPlaneHalo.setEnabled(state.grabbed && !state.completed);
-    if (state.grabbed) {
-      const pulse = 0.30 + Math.sin(this.elapsed * 3.2) * 0.04;
-      this.yzHaloMat.alpha = Math.min(0.35, Math.max(0.30, pulse));
+    // Hide decorative YZ plane halo once tilted (> 3°) so it NEVER reads as a solid outer hoop!
+    this.yzPlaneHalo.setEnabled(state.grabbed && !state.completed && !isTilted);
+    if (state.grabbed && !isTilted) {
+      const pulse = 0.30 + Math.sin(this.elapsed * 3.0) * 0.03;
+      this.yzHaloMat.alpha = Math.min(0.34, Math.max(0.30, pulse));
     }
 
     // 3. Third-person Astronaut 08 placement
@@ -1190,17 +1397,38 @@ export class Level14SanctuaryScene {
       this.astronaut.rotation.y = 0.42;
     }
 
-    // 4. Amber-coral collision feedback barrier pulse
+    // 4. Focused Collision Contact Patch + Slit Edge Feedback (never blind the player with a whole-wall flash!)
+    const showContact = (this.contactHighlight > 0.04 || isInspectingOtherW) && !isBlade && !state.completed;
+    this.contactPatchMesh.isVisible = showContact;
+    if (showContact) {
+      const cx = isInspectingOtherW && slice.intersects ? slice.xCenter : this.contactX;
+      this.contactPatchMesh.position.set(
+        cx,
+        LEVEL14_CONFIG.orbCenterY,
+        LEVEL14_CONFIG.wallZMin - 0.09
+      );
+      const pulse = 0.30 + 0.05 * Math.sin(this.elapsed * 6.5);
+      this.contactPatchMat.alpha = Math.min(0.35, Math.max(0.30, pulse));
+    }
+
     if (this.barrierFlash > 0.02) {
       this.barrierPlane.setEnabled(true);
       this.barrierPlane.position.z =
         state.isOrbOverlappingWallZ() ? state.orbZ : LEVEL14_CONFIG.wallZMin - 0.14;
-      this.barrierMat.alpha = Math.min(0.45, this.barrierFlash * 0.42);
+      this.barrierMat.alpha = Math.min(0.35, this.barrierFlash * 0.34);
       this.slitLipMat.emissiveColor = B.Color3.Lerp(
         B.Color3.FromHexString(PALETTE.accent.platinum),
         B.Color3.FromHexString(PALETTE.accent.amberCoral),
         this.barrierFlash
       ).scale(1.65);
+    } else if (this.sliceConfirmPulse > 0.02) {
+      // Confirm thin slice fits inside the two glowing cyan-platinum slit lips!
+      this.barrierPlane.setEnabled(false);
+      this.slitLipMat.emissiveColor = B.Color3.Lerp(
+        B.Color3.FromHexString(PALETTE.accent.platinum),
+        B.Color3.FromHexString(PALETTE.accent.cyanW0),
+        this.sliceConfirmPulse
+      ).scale(1.65 + this.sliceConfirmPulse * 0.55);
     } else {
       this.barrierPlane.setEnabled(false);
       const slitColor = isBlade || state.completed
@@ -1209,11 +1437,19 @@ export class Level14SanctuaryScene {
       this.slitLipMat.emissiveColor = slitColor.scale(1.65);
     }
 
-    // 5. North target ghost silhouette
-    this.northTargetGhost.setEnabled(!state.completed);
-    if (!state.completed) {
-      const hintPulse = this.hintHighlight ? 0.04 * Math.sin(this.elapsed * 5.0) : 0;
-      this.northTargetGhostMat.alpha = Math.min(0.35, Math.max(0.30, 0.31 + hintPulse));
+    // 5. North target full-sphere silhouette & contour (pulses brightly on opening AND upon North arrival!)
+    const showNorthTarget = !state.completed;
+    this.northTargetGhost.setEnabled(showNorthTarget);
+    this.northTargetContour.setEnabled(showNorthTarget);
+    if (showNorthTarget) {
+      const openingBoost = this.openingPulseTimer > 0 ? 0.5 + 0.5 * Math.sin(this.elapsed * 5.2) : 0;
+      const arrivalBoost = state.isOnNorthPedestal() ? 0.5 + 0.5 * Math.sin(this.elapsed * 4.5) : 0;
+      const pulse = Math.max(openingBoost, arrivalBoost, this.hintHighlight ? 0.7 : 0);
+      this.northTargetGhostMat.alpha = Math.min(0.35, Math.max(0.30, 0.30 + pulse * 0.05));
+      this.northTargetContour.rotation.y += dtSec * (0.4 + pulse * 0.9);
+      this.northRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(
+        1.45 + pulse * 1.1
+      );
     }
 
     // 6. Victory: Twin 13.6m Monoliths slide wide open (±3.85m -> 7.86m grand gateway!) + Gate + North Portal!
@@ -1250,7 +1486,6 @@ export class Level14SanctuaryScene {
       this.gateRight.position.x = 2.22;
       this.gateEmblem.scaling.setAll(1);
       this.gateEmblem.isVisible = true;
-      this.northRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(1.45);
       this.orbLight.intensity = 2.2;
 
       // Dormant Teleportation Pad

@@ -27,7 +27,7 @@
         <div class="badge-dot" id="honest-badge-dot"></div>
         <div class="badge-text">
           <div id="honest-badge-title" class="badge-title">我们所在的三维切面 · 第四维坐标 w = +0.00</div>
-          <div id="honest-badge-detail" class="badge-detail">四维巨墙贯穿整个 w 轴，思考如何让球穿过狭缝</div>
+          <div id="honest-badge-detail" class="badge-detail">把前方的青色圆球送到墙后方的金色底座上</div>
         </div>
       </div>
 
@@ -94,25 +94,43 @@
       <div id="reticle-prompt" class="reticle-prompt"></div>
     </div>
 
-    <!-- Bottom-Left: Honest Fourth-Dimension Side-View Panel (Visible in Grab Stage; expands on Tab) -->
+    <!-- Floating Visual Cue A: Scroll-Wheel Ownership Handoff (glides from w-ruler to orb on E grab!) -->
+    <div id="wheel-handoff-cue" class="wheel-handoff-cue" aria-hidden="true">
+      <span class="wheel-glyph">⇕</span>
+      <span>滚轮：旋转手中的球</span>
+    </div>
+
+    <!-- Floating Visual Cue B: Short Screen-Space Callout anchored to cyan disc on first slight tilt -->
+    <div id="slice-callout-tag" class="slice-callout-tag" aria-hidden="true">
+      <span class="callout-dot"></span>
+      <span>留在这一层的部分</span>
+    </div>
+
+    <!-- Progressive Bottom-Left Tab Entry Pill (shown while grabbed before Side View opens; pulses after tilted bump!) -->
+    <button id="tab-entry-pill" class="tab-entry-pill" type="button" hidden title="按 Tab 查看第四维度侧视图">
+      <span class="keycap">Tab</span>
+      <span id="tab-entry-label">查看侧视图</span>
+    </button>
+
+    <!-- Bottom-Left: Honest Fourth-Dimension Side-View Panel (Opens cleanly on Tab) -->
     <section id="side-view-panel" class="side-view-panel" aria-label="第四维度侧视图">
       <div class="panel-header">
-        <span class="panel-title">第四维度侧视图 · 观察球的完整形态</span>
+        <span class="panel-title">第四维度侧视图 · △ 与 ○ 对应圆球两端</span>
         <button id="btn-tab-view" class="mini-key-btn" type="button" title="按 Tab 切换第四维度侧视图">
           <span class="keycap">Tab</span>
-          <span id="btn-tab-label">展开</span>
+          <span id="btn-tab-label">收起</span>
         </button>
       </div>
       <canvas id="side-view-canvas" class="side-view-canvas"></canvas>
       <div class="panel-caption">
-        青色横线为<strong>我们所在的三维切面</strong>，金色箭头数轴为<strong>第四维度 w</strong>；圆球半径恒为 <strong class="mono">1.00m</strong>，从未被压扁。
+        <strong>△</strong> 与 <strong>○</strong> 标出圆球左右两端：转动时两点间距恒定，观察它们如何向两道亮缝之间收拢。
       </div>
     </section>
 
     <!-- Right Edge: Vertical w Phase Ruler + Collapsible 3-Layer Hyper-Holographic Console (F) -->
     <aside id="tactical-wrapper" class="tactical-wrapper" aria-label="高维全息操作台">
-      <!-- Slim Always-Visible Vertical w Phase Ruler -->
-      <div class="w-ruler" title="鼠标滚轮沿第四维度 w 轴移动">
+      <!-- Slim Always-Visible Vertical w Phase Ruler (dims when scroll wheel transfers to grabbed orb) -->
+      <div id="w-ruler-box" class="w-ruler" title="鼠标滚轮沿第四维度 w 轴移动">
         <span class="w-tick w-pos">+1.8</span>
         <div class="w-track">
           <div class="w-mark" style="top: 9.1%; background: #F7C346;"></div>
@@ -201,7 +219,7 @@
       <div class="teleporter-badge">已抵达传送台 · 第 14 关完成</div>
       <h2 id="teleporter-title" class="modal-title" style="margin-top:10px;">传送坐标锁定：第 15 关 · 圆环桥</h2>
       <p class="teleporter-copy">
-        你已经真正掌握了四维旋转的本质：<strong>三维圆球没有被压扁，而是像一枚硬币一样在第四维度 w 里立了起来</strong>，借此穿过发丝狭缝、化作钥匙为你敞开四维巨墙。<br /><br />
+        圆球从未被压扁——只是把伸出缝外的两端沿 <strong>第四维度 w</strong> 旋转收进亮缝，抵达对面底座后再重新放平。<br /><br />
         下一关「第 15 关 · 圆环桥」将在 <strong>Phase 2</strong> 全量关卡阶段正式开放。
       </p>
       <div class="victory-actions">
