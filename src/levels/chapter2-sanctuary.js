@@ -72,7 +72,7 @@ export class Level14SanctuaryScene {
     s.clearColor = B.Color4.FromHexString('#0D0A07FF');
     s.fogMode = B.Scene.FOGMODE_EXP2;
     s.fogColor = B.Color3.FromHexString('#110E0A');
-    s.fogDensity = 0.014;
+    s.fogDensity = 0.0068; // Calibrated for 44m-long 2x grand cathedral clarity
 
     // 1. Procedural Cathedral IBL Environment Map (instant metallic/clearcoat speculars!)
     createSanctuaryEnvironmentTexture(s);
@@ -82,16 +82,16 @@ export class Level14SanctuaryScene {
       this.pipeline = setupAAAPostProcessing(s, this.camera);
     }
 
-    // 3. Sculpted 3-Light Cathedral Rig
+    // 3. Sculpted Cathedral Lighting Rig (scaled for 34m x 44m x 22m grand sanctuary)
     const hemi = new B.HemisphericLight('sanctuary_hemi', new B.Vector3(0, 1, -0.2), s);
-    hemi.intensity = 0.42;
+    hemi.intensity = 0.48;
     hemi.diffuse = B.Color3.FromHexString('#F0E5CF');
-    hemi.groundColor = B.Color3.FromHexString('#16110B');
+    hemi.groundColor = B.Color3.FromHexString('#18130C');
 
-    // Key Clerestory Sunlight (casts soft PCF shadows!)
-    this.keyLight = new B.DirectionalLight('sanctuary_key_dir', new B.Vector3(-0.28, -0.92, 0.26), s);
-    this.keyLight.position = new B.Vector3(4.5, 13.5, -4.5);
-    this.keyLight.intensity = 1.65;
+    // Key Clerestory Sunlight (casts soft PCF shadows across the 2x nave!)
+    this.keyLight = new B.DirectionalLight('sanctuary_key_dir', new B.Vector3(-0.26, -0.92, 0.28), s);
+    this.keyLight.position = new B.Vector3(9.5, 24.0, -9.5);
+    this.keyLight.intensity = 1.75;
     this.keyLight.diffuse = B.Color3.FromHexString('#FFE8BA');
     this.keyLight.specular = B.Color3.FromHexString('#FFD98A');
 
@@ -102,16 +102,16 @@ export class Level14SanctuaryScene {
       s
     );
     this.orbLight.diffuse = B.Color3.FromHexString(PALETTE.accent.cyanW0);
-    this.orbLight.intensity = 1.9;
-    this.orbLight.range = 12.0;
+    this.orbLight.intensity = 2.2;
+    this.orbLight.range = 24.0;
   }
 
   _initSharedPBRMaterials() {
     const s = this.scene;
     const B = this.B;
 
-    this.obsidianPBR = createCarvedObsidianMonolithPBR(s, 'aaa_obsidian_wall_pbr', 2, 2);
-    this.pillarObsidianPBR = createCarvedObsidianMonolithPBR(s, 'aaa_obsidian_pillar_pbr', 1, 3);
+    this.obsidianPBR = createCarvedObsidianMonolithPBR(s, 'aaa_obsidian_wall_pbr', 4, 4);
+    this.pillarObsidianPBR = createCarvedObsidianMonolithPBR(s, 'aaa_obsidian_pillar_pbr', 2, 5);
     this.bronzePBR = createAntiqueBronzePBR(s, 'aaa_antique_bronze_pbr', 0.14);
     this.darkBronzePBR = createAntiqueBronzePBR(s, 'aaa_dark_bronze_pbr', 0.06);
     this.darkBronzePBR.albedoColor = B.Color3.FromHexString('#7A5C28');
@@ -148,127 +148,127 @@ export class Level14SanctuaryScene {
     const B = this.B;
     const s = this.scene;
 
-    // 1. Glossy Reflective Obsidian Floor (MirrorTexture wired in _finalizeMirrorAndShadows)
-    const { mat: floorMat, mirrorTex } = createSanctuaryMirrorFloorPBR(s, this.mirrorRenderList);
+    // 1. Glossy Reflective Obsidian Floor (40m x 50m for 2.2x expanded grand cathedral!)
+    const { mat: floorMat, mirrorTex } = createSanctuaryMirrorFloorPBR(s, this.mirrorRenderList, 11, 14);
     this.floorMirrorTex = mirrorTex;
 
-    const floor = B.MeshBuilder.CreateGround('sanctuary_floor', { width: 20, height: 26 }, s);
-    floor.position.set(0, 0, -0.6);
+    const floor = B.MeshBuilder.CreateGround('sanctuary_floor', { width: 40, height: 50 }, s);
+    floor.position.set(0, 0, -1.5);
     floor.material = floorMat;
     floor.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     floor.parent = this.root;
     this._registerMesh(floor, { freeze: true, receiveShadow: true });
 
-    // Central raised brushed-bronze & dark basalt ceremonial runway leading through slit to the North Teleportation Pad
-    const runway = B.MeshBuilder.CreateBox('orb_runway', { width: 0.76, height: 0.036, depth: 14.2 }, s);
-    runway.position.set(0, 0.018, 0.7);
+    // Central raised brushed-bronze ceremonial runway (strictly 6mm clear above floor -> zero Z-fighting!)
+    const runway = B.MeshBuilder.CreateBox('orb_runway', { width: 1.05, height: 0.04, depth: 27.6 }, s);
+    runway.position.set(0, 0.026, -1.6);
     runway.material = this.darkBronzePBR;
     runway.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     runway.parent = this.root;
     this._registerMesh(runway, { freeze: true, receiveShadow: true });
 
-    // Exact 0.164m luminous platinum floor rails (precision alignment datum along X = ±0.082m)
+    // Exact 0.164m luminous platinum floor rails (mounted cleanly proud above runway top at y=0.046!)
     for (const sign of [-1, 1]) {
       const rail = B.MeshBuilder.CreateBox(
         `slit_floor_rail_${sign}`,
-        { width: 0.016, height: 0.044, depth: 9.8 },
+        { width: 0.018, height: 0.024, depth: 22.8 },
         s
       );
-      rail.position.set(sign * LEVEL14_CONFIG.slitHalfWidth, 0.022, 0);
+      rail.position.set(sign * LEVEL14_CONFIG.slitHalfWidth, 0.06, -0.4);
       rail.material = this.emissivePlatinumMat;
       rail.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
       rail.parent = this.root;
       this._registerMesh(rail, { freeze: true, mirror: true });
     }
 
-    // 2. Monumental Canted Brutalist Obsidian Rib-Arches & Stepped Colonnade (5 bays soaring 10.6m!)
-    const bayZs = [-8.6, -5.2, -2.1, 4.4, 7.6];
+    // 2. Monumental Canted Brutalist Obsidian Rib-Arches & Stepped Colonnade (8 bays soaring 22m high!)
+    const bayZs = [-18.5, -13.5, -8.5, -3.5, 4.5, 9.5, 14.5, 18.8];
     bayZs.forEach((bz, idx) => {
       for (const side of [-1, 1]) {
-        // Heavy stepped obsidian plinth base
+        // Heavy stepped obsidian plinth base at X = ±15.2m
         const plinth = B.MeshBuilder.CreateBox(
           `col_plinth_${idx}_${side}`,
-          { width: 1.5, height: 1.0, depth: 1.45 },
+          { width: 2.4, height: 1.6, depth: 2.3 },
           s
         );
-        plinth.position.set(side * 6.9, 0.5, bz);
+        plinth.position.set(side * 15.2, 0.82, bz);
         plinth.material = this.darkBronzePBR;
         plinth.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
         plinth.parent = this.root;
         this._registerMesh(plinth, { freeze: true, mirror: true, shadow: true, receiveShadow: true });
 
-        // Towering carved obsidian pier
+        // Towering 19.4m carved obsidian pier
         const pier = B.MeshBuilder.CreateBox(
           `col_pier_${idx}_${side}`,
-          { width: 1.15, height: 9.6, depth: 1.1 },
+          { width: 1.85, height: 19.4, depth: 1.8 },
           s
         );
-        pier.position.set(side * 6.9, 5.2, bz);
+        pier.position.set(side * 15.2, 10.6, bz);
         pier.material = this.pillarObsidianPBR;
         pier.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
         pier.parent = this.root;
         this._registerMesh(pier, { freeze: true, mirror: true, shadow: true });
 
-        // Recessed metallic antique-bronze vertical flute inlay
+        // Recessed metallic antique-bronze vertical flute inlay (cleanly 4cm proud of pier inner face!)
         const inlay = B.MeshBuilder.CreateBox(
           `col_inlay_${idx}_${side}`,
-          { width: 0.09, height: 8.8, depth: 0.16 },
+          { width: 0.14, height: 18.0, depth: 0.24 },
           s
         );
-        inlay.position.set(side * 6.3, 5.1, bz);
+        inlay.position.set(side * 14.2, 10.5, bz);
         inlay.material = this.bronzePBR;
         inlay.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
         inlay.parent = this.root;
         this._registerMesh(inlay, { freeze: true, mirror: true });
 
-        // Angled brutalist cathedral corbel rib arching inward toward the high vault
+        // Monumental angled brutalist cathedral corbel rib arching inward toward the 22m high vault
         const rib = B.MeshBuilder.CreateBox(
           `vault_rib_${idx}_${side}`,
-          { width: 4.4, height: 0.52, depth: 0.72 },
+          { width: 10.4, height: 0.85, depth: 1.15 },
           s
         );
-        rib.position.set(side * 4.5, 9.65, bz);
-        rib.rotation.z = side * -0.32;
+        rib.position.set(side * 10.1, 19.8, bz);
+        rib.rotation.z = side * -0.28;
         rib.material = this.pillarObsidianPBR;
         rib.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
         rib.parent = this.root;
         this._registerMesh(rib, { freeze: true, mirror: true });
 
-        // Illuminated golden soffit trim under each cathedral arch rib
+        // Illuminated golden soffit trim under each cathedral arch rib (cleanly proud beneath rib!)
         const soffit = B.MeshBuilder.CreateBox(
           `vault_soffit_${idx}_${side}`,
-          { width: 4.1, height: 0.08, depth: 0.14 },
+          { width: 9.8, height: 0.14, depth: 0.22 },
           s
         );
-        soffit.position.set(side * 4.42, 9.35, bz);
-        soffit.rotation.z = side * -0.32;
+        soffit.position.set(side * 10.0, 19.3, bz);
+        soffit.rotation.z = side * -0.28;
         soffit.material = this.emissiveGoldTrimMat;
         soffit.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
         soffit.parent = this.root;
         this._registerMesh(soffit, { freeze: true, mirror: true });
       }
 
-      // High transverse vault lintel framing the pure-white clerestory skylight
+      // High transverse vault lintel framing the 4.6m-wide pure-white clerestory skylight
       const lintel = B.MeshBuilder.CreateBox(
         `vault_lintel_${idx}`,
-        { width: 5.4, height: 0.55, depth: 0.78 },
+        { width: 11.4, height: 0.9, depth: 1.2 },
         s
       );
-      lintel.position.set(0, 10.45, bz);
+      lintel.position.set(0, 21.2, bz);
       lintel.material = this.darkBronzePBR;
       lintel.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
       lintel.parent = this.root;
       this._registerMesh(lintel, { freeze: true });
     });
 
-    // Outer vaulted obsidian sanctuary walls & coffered high ceiling slabs
+    // Outer vaulted obsidian sanctuary walls (34m span: X = ±17.0m) & coffered 22m ceiling wings
     for (const side of [-1, 1]) {
       const wall = B.MeshBuilder.CreateBox(
         `sanctuary_outer_wall_${side}`,
-        { width: 0.8, height: 11.0, depth: 26 },
+        { width: 1.2, height: 22.8, depth: 48 },
         s
       );
-      wall.position.set(side * 7.9, 5.5, -0.6);
+      wall.position.set(side * 17.0, 11.4, -1.5);
       wall.material = this.obsidianPBR;
       wall.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
       wall.parent = this.root;
@@ -276,27 +276,27 @@ export class Level14SanctuaryScene {
 
       const ceilingWing = B.MeshBuilder.CreateBox(
         `sanctuary_ceiling_${side}`,
-        { width: 6.2, height: 0.45, depth: 26 },
+        { width: 13.6, height: 0.7, depth: 48 },
         s
       );
-      ceilingWing.position.set(side * 4.7, 10.8, -0.6);
+      ceilingWing.position.set(side * 10.2, 22.0, -1.5);
       ceilingWing.material = this.obsidianPBR;
       ceilingWing.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
       ceilingWing.parent = this.root;
       this._registerMesh(ceilingWing, { freeze: true });
     }
 
-    // South rear monumental wall
-    const southWall = B.MeshBuilder.CreateBox('sanctuary_south_wall', { width: 17, height: 11.2, depth: 0.8 }, s);
-    southWall.position.set(0, 5.6, -11.6);
+    // South rear monumental wall (Z = -23.0m)
+    const southWall = B.MeshBuilder.CreateBox('sanctuary_south_wall', { width: 35.6, height: 22.8, depth: 1.2 }, s);
+    southWall.position.set(0, 11.4, -23.0);
     southWall.material = this.obsidianPBR;
     southWall.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     southWall.parent = this.root;
     this._registerMesh(southWall, { freeze: true });
 
-    // Pure-White Clerestory Skylight Strip pouring luminous sanctuary light down the central nave
-    const skylight = B.MeshBuilder.CreateBox('clerestory_skylight', { width: 2.3, height: 0.14, depth: 21 }, s);
-    skylight.position.set(0, 10.9, -0.6);
+    // Pure-White Clerestory Skylight Strip pouring luminous sanctuary light down the 44m central nave
+    const skylight = B.MeshBuilder.CreateBox('clerestory_skylight', { width: 4.8, height: 0.22, depth: 43 }, s);
+    skylight.position.set(0, 22.25, -1.5);
     skylight.material = this.emissivePlatinumMat;
     skylight.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     skylight.parent = this.root;
@@ -304,23 +304,23 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * Colossal slow-counter-rotating Antique Bronze Kinetic Astrolabe suspended high in the vault
-   * above the South Nave — delivers awe-inspiring cosmic scale without cluttering eye-level puzzles.
+   * Colossal slow-counter-rotating Antique Bronze Kinetic Astrolabe suspended high in the 22m vault
+   * above the South Nave — delivers awe-inspiring cosmic scale across the 2x expanded cathedral.
    */
   _buildKineticVaultAstrolabe() {
     const B = this.B;
     const s = this.scene;
 
     const specs = [
-      { diam: 5.8, thick: 0.09, y: 7.9, z: -3.2, tiltX: 0.25, speedY: 0.14, speedZ: 0.05 },
-      { diam: 4.5, thick: 0.075, y: 7.9, z: -3.2, tiltX: -0.42, speedY: -0.2, speedZ: 0.08 },
-      { diam: 3.3, thick: 0.06, y: 7.9, z: -3.2, tiltX: 0.68, speedY: 0.28, speedZ: -0.1 },
+      { diam: 11.4, thick: 0.16, y: 15.6, z: -6.2, tiltX: 0.25, speedY: 0.12, speedZ: 0.04 },
+      { diam: 8.8, thick: 0.13, y: 15.6, z: -6.2, tiltX: -0.42, speedY: -0.18, speedZ: 0.07 },
+      { diam: 6.4, thick: 0.10, y: 15.6, z: -6.2, tiltX: 0.68, speedY: 0.25, speedZ: -0.09 },
     ];
 
     specs.forEach((sp, i) => {
       const ring = B.MeshBuilder.CreateTorus(
         `vault_astrolabe_${i}`,
-        { diameter: sp.diam, thickness: sp.thick, tessellation: 48 },
+        { diameter: sp.diam, thickness: sp.thick, tessellation: 56 },
         s
       );
       ring.position.set(0, sp.y, sp.z);
@@ -334,8 +334,8 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * Flanking W-layer architectural reference rings (W = +1.8 Gold on East, W = -1.8 Blue on West).
-   * Strictly obeys Ghost Material Invariants when off-slice!
+   * Flanking W-layer architectural reference wings (w = +1.8 Gold on East, w = -1.8 Blue on West).
+   * Positioned gracefully wide at X = ±9.2m along both South & North halves of the 34m cathedral!
    */
   _buildLayerReferenceArches() {
     const B = this.B;
@@ -343,8 +343,8 @@ export class Level14SanctuaryScene {
 
     this.wLayerGroups = [];
     const defs = [
-      { w: 1.8, hex: PALETTE.accent.goldWPos, xOffset: 4.45, zPositions: [-5.1, -2.5] },
-      { w: -1.8, hex: PALETTE.accent.blueWNeg, xOffset: -4.45, zPositions: [-5.1, -2.5] },
+      { w: 1.8, hex: PALETTE.accent.goldWPos, xOffset: 9.2, zPositions: [-12.2, -7.4, -2.8, 6.8, 11.8] },
+      { w: -1.8, hex: PALETTE.accent.blueWNeg, xOffset: -9.2, zPositions: [-12.2, -7.4, -2.8, 6.8, 11.8] },
     ];
 
     defs.forEach((def, idx) => {
@@ -353,10 +353,10 @@ export class Level14SanctuaryScene {
       def.zPositions.forEach((zPos, j) => {
         const ring = B.MeshBuilder.CreateTorus(
           `w_ref_ring_${idx}_${j}`,
-          { diameter: 2.35, thickness: 0.075, tessellation: 32 },
+          { diameter: 4.1, thickness: 0.12, tessellation: 36 },
           s
         );
-        ring.position.set(def.xOffset, 3.05, zPos);
+        ring.position.set(def.xOffset, 4.9, zPos);
         ring.rotation.z = Math.PI * 0.5;
         ring.material = mat;
         ring.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
@@ -366,10 +366,10 @@ export class Level14SanctuaryScene {
 
         const stela = B.MeshBuilder.CreateBox(
           `w_ref_stela_${idx}_${j}`,
-          { width: 0.16, height: 3.7, depth: 0.45 },
+          { width: 0.24, height: 6.4, depth: 0.65 },
           s
         );
-        stela.position.set(def.xOffset + (def.xOffset > 0 ? 0.62 : -0.62), 1.85, zPos);
+        stela.position.set(def.xOffset + (def.xOffset > 0 ? 1.15 : -1.15), 3.22, zPos);
         stela.material = mat;
         stela.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
         stela.parent = this.root;
@@ -381,24 +381,28 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * Hero Landmark: 「一线天石碑」 — Monumental Multi-Tiered 6.8m Obsidian-Gold Twin Monoliths
-   * with precision machined 0.164m platinum hairline slit jaws & Vernier calibration marks.
-   * Solid across ALL W slices!
+   * Hero Landmark: 「一线天石碑」 — Monumental 13.6m × 34.4m Obsidian-Gold Twin Monoliths
+   * with precision-machined 0.164m hairline slit jaws & Vernier calibration marks.
+   *
+   * STRICT ANTI-Z-FIGHTING GEOMETRY:
+   * Every sub-mesh face (slab, dark-bronze inner throat, vertical laser ribs, front/back platinum lips,
+   * aperture jaws, Vernier ticks, horizontal moldings, base skirt, crown, top seal) has explicit
+   * non-coplanar clearance (>= 4mm–50mm) so the slit NEVER flickers at any angle or distance!
    */
   _buildHairlineMonoliths() {
     const B = this.B;
     const s = this.scene;
 
-    const wallH = LEVEL14_CONFIG.wallHeight; // 6.8 m
+    const wallH = LEVEL14_CONFIG.wallHeight; // 13.6 m (2x taller!)
     const wallDepth = LEVEL14_CONFIG.wallZMax - LEVEL14_CONFIG.wallZMin; // 2.4 m
     const halfGap = LEVEL14_CONFIG.slitHalfWidth; // 0.082 m
-    const wallWidth = 7.4;
+    const wallWidth = 17.2; // Seals wall-to-wall past outer walls at ±17.0 m
 
     this.slitLipMat = new B.PBRMaterial('aaa_slit_platinum_lip', s);
     this.slitLipMat.albedoColor = B.Color3.FromHexString(PALETTE.accent.platinum);
-    this.slitLipMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(1.85);
-    this.slitLipMat.metallic = 0.25;
-    this.slitLipMat.roughness = 0.15;
+    this.slitLipMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(1.65);
+    this.slitLipMat.metallic = 0.22;
+    this.slitLipMat.roughness = 0.16;
     this.slitLipMat.disableDepthWrite = false;
     this.slitLipMat.needDepthPrePass = false;
 
@@ -408,10 +412,12 @@ export class Level14SanctuaryScene {
     this.monolithRightGroup.parent = this.root;
 
     for (const side of [-1, 1]) {
-      const centerX = side * (halfGap + wallWidth * 0.5);
+      // Primary obsidian slab starts cleanly recessed at |X| = 0.108m (26mm behind the 0.082m slit throat!)
+      const slabInnerX = halfGap + 0.026; // 0.108 m
+      const centerX = side * (slabInnerX + wallWidth * 0.5);
       const group = side < 0 ? this.monolithLeftGroup : this.monolithRightGroup;
 
-      // 1. Primary 6.8m Carved Normal-Mapped Obsidian Monolith Slab
+      // 1. Primary 13.6m Carved Normal-Mapped Obsidian Monolith Slab (|X| in [0.108, 17.308], Z in [-1.20, +1.20])
       const slab = B.MeshBuilder.CreateBox(
         `hairline_monolith_${side}`,
         { width: wallWidth, height: wallH, depth: wallDepth },
@@ -423,51 +429,81 @@ export class Level14SanctuaryScene {
       slab.parent = group;
       this._registerMesh(slab, { freeze: false, mirror: true, shadow: true, receiveShadow: true });
 
-      // 2. Stepped Monumental Buttress Pier flanking the outer face for deep brutalist shadow relief
-      const buttress = B.MeshBuilder.CreateBox(
-        `monolith_buttress_${side}`,
-        { width: 1.8, height: wallH - 0.3, depth: wallDepth + 0.52 },
+      // 1b. Precision Machined Dark-Bronze Inner Slit Throat (|X| in [0.090, 0.104], Z in [-1.16, +1.16])
+      // Strictly separated from slab (4mm gap) & front/back faces (40mm recessed) -> ZERO Z-fighting!
+      const innerThroat = B.MeshBuilder.CreateBox(
+        `slit_inner_throat_${side}`,
+        { width: 0.014, height: wallH - 0.08, depth: wallDepth - 0.08 },
         s
       );
-      buttress.position.set(side * 3.15, (wallH - 0.3) * 0.5, 0);
-      buttress.material = this.pillarObsidianPBR;
-      buttress.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
-      buttress.parent = group;
-      this._registerMesh(buttress, { freeze: false, mirror: true, shadow: true, receiveShadow: true });
+      innerThroat.position.set(side * (halfGap + 0.015), wallH * 0.5, 0);
+      innerThroat.material = this.darkBronzePBR;
+      innerThroat.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
+      innerThroat.parent = group;
+      this._registerMesh(innerThroat, { freeze: false, mirror: true });
 
-      // Stepped Bronze Plinth Skirt along base of monolith
+      // 1c. Three Sleek Recessed Vertical Luminous Calibration Ribs inside the 2.4m slit throat
+      // Strictly proud of innerThroat (|X| in [0.082, 0.088], 2mm clear of throat -> crisp non-flickering laser ribs!)
+      for (const ribZ of [-0.78, 0.0, 0.78]) {
+        const innerRib = B.MeshBuilder.CreateBox(
+          `slit_inner_rib_${side}_${ribZ}`,
+          { width: 0.006, height: wallH - 0.16, depth: 0.065 },
+          s
+        );
+        innerRib.position.set(side * (halfGap + 0.003), wallH * 0.5, ribZ);
+        innerRib.material = this.slitLipMat;
+        innerRib.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
+        innerRib.parent = group;
+        this._registerMesh(innerRib, { freeze: false, mirror: true });
+      }
+
+      // 2. Stepped Monumental Buttress Piers flanking the wide 17.2m face for deep brutalist shadow relief
+      for (const bx of [5.8, 11.8]) {
+        const buttress = B.MeshBuilder.CreateBox(
+          `monolith_buttress_${side}_${bx}`,
+          { width: 2.2, height: wallH - 0.4, depth: wallDepth + 0.76 },
+          s
+        );
+        buttress.position.set(side * bx, (wallH - 0.4) * 0.5, 0);
+        buttress.material = this.pillarObsidianPBR;
+        buttress.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
+        buttress.parent = group;
+        this._registerMesh(buttress, { freeze: false, mirror: true, shadow: true, receiveShadow: true });
+      }
+
+      // Stepped Bronze Plinth Skirt along base of monolith (cleanly proud of floor & slab!)
       const baseSkirt = B.MeshBuilder.CreateBox(
         `monolith_skirt_${side}`,
-        { width: wallWidth - 0.1, height: 0.26, depth: wallDepth + 0.22 },
+        { width: wallWidth - 0.5, height: 0.34, depth: wallDepth + 0.32 },
         s
       );
-      baseSkirt.position.set(centerX + side * 0.05, 0.13, 0);
+      baseSkirt.position.set(centerX + side * 0.25, 0.18, 0);
       baseSkirt.material = this.darkBronzePBR;
       baseSkirt.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
       baseSkirt.parent = group;
       this._registerMesh(baseSkirt, { freeze: false, mirror: true, receiveShadow: true });
 
-      // Cantilevered Antique-Bronze Architectural Crown Cornice
+      // Cantilevered Antique-Bronze Architectural Crown Cornice (cleanly 30mm above slab top!)
       const crown = B.MeshBuilder.CreateBox(
         `monolith_crown_${side}`,
-        { width: wallWidth + 0.14, height: 0.38, depth: wallDepth + 0.36 },
+        { width: wallWidth - 0.06, height: 0.52, depth: wallDepth + 0.48 },
         s
       );
-      crown.position.set(centerX, wallH + 0.19, 0);
+      crown.position.set(centerX + side * 0.03, wallH + 0.29, 0);
       crown.material = this.bronzePBR;
       crown.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
       crown.parent = group;
       this._registerMesh(crown, { freeze: false, mirror: true });
 
-      // Horizontal machined bronze frieze moldings on South & North monolith faces
-      [1.4, 3.45, 5.5].forEach((bandY, bIdx) => {
+      // Horizontal machined bronze frieze moldings on South & North monolith faces (strictly proud in Z!)
+      [2.4, 5.8, 9.2, 12.2].forEach((bandY, bIdx) => {
         for (const zFace of [-1, 1]) {
           const band = B.MeshBuilder.CreateBox(
             `monolith_band_${side}_${bIdx}_${zFace}`,
-            { width: wallWidth - 0.32, height: 0.11, depth: 0.08 },
+            { width: wallWidth - 0.7, height: 0.14, depth: 0.10 },
             s
           );
-          band.position.set(centerX, bandY, zFace * (wallDepth * 0.5 + 0.03));
+          band.position.set(centerX + side * 0.35, bandY, zFace * (wallDepth * 0.5 + 0.07));
           band.material = this.bronzePBR;
           band.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
           band.parent = group;
@@ -475,66 +511,55 @@ export class Level14SanctuaryScene {
         }
       });
 
-      // 3. Precision Machined Aperture Jaw Pylons framing the 0.164m Hairline Slit!
+      // 3. Precision Machined Aperture Jaw Pylons framing the 0.164m Hairline Slit (strictly outside slab Z!)
       for (const zFace of [-1, 1]) {
-        const jaw = B.MeshBuilder.CreateBox(
-          `monolith_aperture_jaw_${side}_${zFace}`,
-          { width: 0.22, height: wallH, depth: 0.16 },
+        // Dazzling Platinum Vertical Slit Lip Emitter strictly clear of slab Z (±1.208..±1.268) & X (±0.082..±0.126)!
+        const lip = B.MeshBuilder.CreateBox(
+          `slit_platinum_lip_${side}_${zFace}`,
+          { width: 0.044, height: wallH - 0.08, depth: 0.06 },
           s
         );
-        jaw.position.set(side * (halfGap + 0.24), wallH * 0.5, zFace * (wallDepth * 0.5 + 0.06));
+        lip.position.set(side * (halfGap + 0.022), wallH * 0.5, zFace * (wallDepth * 0.5 + 0.04));
+        lip.material = this.slitLipMat;
+        lip.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
+        lip.parent = group;
+        this._registerMesh(lip, { freeze: false, mirror: true });
+
+        // Bronze Aperture Jaw strictly outside lip in X (|X| in [0.16, 0.46]) & proud of slab in Z (±1.21..±1.43)
+        const jaw = B.MeshBuilder.CreateBox(
+          `monolith_aperture_jaw_${side}_${zFace}`,
+          { width: 0.30, height: wallH - 0.06, depth: 0.22 },
+          s
+        );
+        jaw.position.set(side * (halfGap + 0.23), wallH * 0.5, zFace * (wallDepth * 0.5 + 0.12));
         jaw.material = this.bronzePBR;
         jaw.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
         jaw.parent = group;
         this._registerMesh(jaw, { freeze: false, mirror: true, shadow: true });
 
-        // Cosmic Vernier Calibration Hash Marks along the slit jaw (emphasizes 0.164m precision!)
-        for (let ty = 0.75; ty <= 6.25; ty += 0.55) {
+        // Cosmic Vernier Calibration Hash Marks cleanly proud of jaw front face (|Z| in [1.44, 1.49])
+        for (let ty = 0.85; ty <= wallH - 0.75; ty += 0.75) {
           const tick = B.MeshBuilder.CreateBox(
             `slit_vernier_${side}_${zFace}_${ty}`,
-            { width: 0.14, height: 0.022, depth: 0.04 },
+            { width: 0.18, height: 0.028, depth: 0.05 },
             s
           );
-          tick.position.set(side * (halfGap + 0.16), ty, zFace * (wallDepth * 0.5 + 0.14));
+          tick.position.set(side * (halfGap + 0.20), ty, zFace * (wallDepth * 0.5 + 0.26));
           tick.material = this.emissiveGoldTrimMat;
           tick.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
           tick.parent = group;
           this._registerMesh(tick, { freeze: false });
         }
-
-        // Dazzling Platinum Vertical Slit Lip Emitter strictly at X = ±0.082m
-        const lip = B.MeshBuilder.CreateBox(
-          `slit_platinum_lip_${side}_${zFace}`,
-          { width: 0.032, height: wallH, depth: 0.06 },
-          s
-        );
-        lip.position.set(side * (halfGap + 0.016), wallH * 0.5, zFace * (wallDepth * 0.5 + 0.03));
-        lip.material = this.slitLipMat;
-        lip.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
-        lip.parent = group;
-        this._registerMesh(lip, { freeze: false, mirror: true });
       }
-
-      // Luminous inner wall channel lining the entire 2.4m deep hairline corridor
-      const innerStrip = B.MeshBuilder.CreateBox(
-        `slit_inner_strip_${side}`,
-        { width: 0.01, height: wallH - 0.1, depth: wallDepth - 0.02 },
-        s
-      );
-      innerStrip.position.set(side * (halfGap + 0.005), wallH * 0.5, 0);
-      innerStrip.material = this.slitLipMat;
-      innerStrip.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
-      innerStrip.parent = group;
-      this._registerMesh(innerStrip, { freeze: false, mirror: true });
     }
 
-    // Heavy overhead sanctuary lintel sealing above Y = 6.8m
+    // Heavy overhead sanctuary lintel sealing cleanly above crown (Y in [14.20, 22.40] -> 50mm gap from crown!)
     const topSeal = B.MeshBuilder.CreateBox(
       'monolith_top_seal',
-      { width: 15.6, height: 3.6, depth: wallDepth + 0.1 },
+      { width: 35.4, height: 8.2, depth: wallDepth + 0.16 },
       s
     );
-    topSeal.position.set(0, wallH + 2.18, 0);
+    topSeal.position.set(0, wallH + 4.7, 0);
     topSeal.material = this.obsidianPBR;
     topSeal.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     topSeal.parent = this.root;
@@ -543,8 +568,8 @@ export class Level14SanctuaryScene {
     // Amber-coral collision feedback barrier plane at the slit entrance
     this.barrierMat = createGhostMaterial(s, 'slit_barrier_flash_mat', PALETTE.accent.amberCoral, 0.34);
     this.barrierMat.alpha = 0.0;
-    this.barrierPlane = B.MeshBuilder.CreatePlane('slit_barrier_plane', { width: 2.5, height: 3.6 }, s);
-    this.barrierPlane.position.set(0, LEVEL14_CONFIG.orbCenterY, LEVEL14_CONFIG.wallZMin - 0.06);
+    this.barrierPlane = B.MeshBuilder.CreatePlane('slit_barrier_plane', { width: 3.4, height: 5.2 }, s);
+    this.barrierPlane.position.set(0, LEVEL14_CONFIG.orbCenterY + 0.6, LEVEL14_CONFIG.wallZMin - 0.14);
     this.barrierPlane.material = this.barrierMat;
     this.barrierPlane.isPickable = false;
     this.barrierPlane.renderingGroupId = RENDER_GROUPS.CHARACTERS_AND_WIREFRAMES;
@@ -654,57 +679,58 @@ export class Level14SanctuaryScene {
     this.northTargetGhost.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.northTargetGhost.parent = this.root;
 
-    // Victory Radiant Light Pillar
+    // Victory Radiant Light Pillar (soaring to 22m cathedral skylight!)
     this.victoryBeamMat = createGhostMaterial(s, 'victory_beam_mat', PALETTE.accent.platinum, 0.34);
     this.victoryBeam = B.MeshBuilder.CreateCylinder(
       'victory_beam',
-      { diameter: 2.2, height: 11.0, tessellation: 32 },
+      { diameter: 2.3, height: 22.0, tessellation: 32 },
       s
     );
-    this.victoryBeam.position.set(0, 5.5, LEVEL14_CONFIG.orbTargetZ);
+    this.victoryBeam.position.set(0, 11.0, LEVEL14_CONFIG.orbTargetZ);
     this.victoryBeam.material = this.victoryBeamMat;
     this.victoryBeam.isVisible = false;
     this.victoryBeam.isPickable = false;
     this.victoryBeam.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.victoryBeam.parent = this.root;
 
-    // Sanctuary Monumental Inner Gate at Z = +7.8m
-    const gateFrame = B.MeshBuilder.CreateBox('sanctuary_gate_frame', { width: 16, height: 11.2, depth: 0.9 }, s);
-    gateFrame.position.set(0, 5.6, 8.4);
+    // Sanctuary Monumental Inner Gate at North Wall Z = +19.6m (spans full 35.6m x 22.8m hall!)
+    const gateFrame = B.MeshBuilder.CreateBox('sanctuary_gate_frame', { width: 35.6, height: 22.8, depth: 1.2 }, s);
+    gateFrame.position.set(0, 11.4, 19.6);
     gateFrame.material = this.obsidianPBR;
     gateFrame.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     gateFrame.parent = this.root;
     this._registerMesh(gateFrame, { freeze: true });
 
-    this.gateLeft = B.MeshBuilder.CreateBox('gate_door_left', { width: 2.3, height: 6.2, depth: 0.45 }, s);
-    this.gateLeft.position.set(-1.16, 3.1, 7.7);
+    this.gateLeft = B.MeshBuilder.CreateBox('gate_door_left', { width: 4.4, height: 11.2, depth: 0.65 }, s);
+    this.gateLeft.position.set(-2.22, 5.62, 18.0);
     this.gateLeft.material = this.pillarObsidianPBR;
     this.gateLeft.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     this.gateLeft.parent = this.root;
     this._registerMesh(this.gateLeft, { freeze: false, mirror: true });
 
-    this.gateRight = B.MeshBuilder.CreateBox('gate_door_right', { width: 2.3, height: 6.2, depth: 0.45 }, s);
-    this.gateRight.position.set(1.16, 3.1, 7.7);
+    this.gateRight = B.MeshBuilder.CreateBox('gate_door_right', { width: 4.4, height: 11.2, depth: 0.65 }, s);
+    this.gateRight.position.set(2.22, 5.62, 18.0);
     this.gateRight.material = this.pillarObsidianPBR;
     this.gateRight.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     this.gateRight.parent = this.root;
     this._registerMesh(this.gateRight, { freeze: false, mirror: true });
 
-    // Golden Sacred Gate Seal Ring (vertical facing South!)
+    // Golden Sacred Gate Seal Ring (cleanly 45cm proud of gate doors!)
     this.gateEmblem = B.MeshBuilder.CreateTorus(
       'gate_emblem_ring',
-      { diameter: 2.4, thickness: 0.09, tessellation: 48 },
+      { diameter: 4.8, thickness: 0.14, tessellation: 48 },
       s
     );
-    this.gateEmblem.position.set(0, 3.1, 7.42);
+    this.gateEmblem.position.set(0, 5.62, 17.55);
     this.gateEmblem.rotation.x = Math.PI * 0.5;
     this.gateEmblem.material = this.emissiveGoldTrimMat;
     this.gateEmblem.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.gateEmblem.parent = this.root;
     this._registerMesh(this.gateEmblem, { freeze: false, mirror: true });
 
-    const behindGlow = B.MeshBuilder.CreatePlane('behind_gate_radiance', { width: 4.6, height: 6.2 }, s);
-    behindGlow.position.set(0, 3.1, 7.94);
+    // Behind-gate radiance plane strictly 35cm clear of gateFrame front face (Z=19.0) & 65cm behind doors (Z=18.0)
+    const behindGlow = B.MeshBuilder.CreatePlane('behind_gate_radiance', { width: 8.6, height: 11.2 }, s);
+    behindGlow.position.set(0, 5.62, 18.65);
     behindGlow.material = this.emissivePlatinumMat;
     behindGlow.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     behindGlow.parent = this.root;
@@ -712,10 +738,10 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * AAA North Teleportation Pad (Z = +6.4m):
+   * AAA North Teleportation Pad (Z = +11.2m in the 2x expanded North Sanctuary Nave):
    * Dormant behind the monolith until the Passing Orb key restores on the North Pedestal.
-   * Upon victory, the twin 6.8m monolith walls slide open and the Teleportation Pad ignites
-   * with counter-rotating emerald-platinum energy rings and a rising warp light column!
+   * Upon victory, the twin 13.6m monolith walls slide wide open and the Teleportation Pad ignites
+   * with monumental counter-rotating emerald-platinum energy rings and a rising warp light column!
    */
   _buildTeleportationPad() {
     const B = this.B;
@@ -730,13 +756,13 @@ export class Level14SanctuaryScene {
     this.portalCoreMat.disableDepthWrite = false;
     this.portalCoreMat.needDepthPrePass = false;
 
-    // Low stepped walkable circular dais (bronze rim + honed alabaster marble deck)
+    // Monumental stepped walkable circular dais (clean vertical separation from floor -> zero Z-fighting!)
     const outerStep = B.MeshBuilder.CreateCylinder(
       'teleporter_outer_step',
-      { diameterTop: 3.1, diameterBottom: 3.35, height: 0.08, tessellation: 48 },
+      { diameterTop: 4.5, diameterBottom: 4.85, height: 0.10, tessellation: 48 },
       s
     );
-    outerStep.position.set(0, 0.04, pz);
+    outerStep.position.set(0, 0.056, pz);
     outerStep.material = this.darkBronzePBR;
     outerStep.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     outerStep.parent = this.root;
@@ -744,10 +770,10 @@ export class Level14SanctuaryScene {
 
     const innerDeck = B.MeshBuilder.CreateCylinder(
       'teleporter_inner_deck',
-      { diameterTop: 2.55, diameterBottom: 2.75, height: 0.12, tessellation: 48 },
+      { diameterTop: 3.7, diameterBottom: 3.95, height: 0.12, tessellation: 48 },
       s
     );
-    innerDeck.position.set(0, 0.1, pz);
+    innerDeck.position.set(0, 0.14, pz);
     innerDeck.material = this.marblePBR;
     innerDeck.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
     innerDeck.parent = this.root;
@@ -756,22 +782,22 @@ export class Level14SanctuaryScene {
     // Flush glowing teleport deck ring
     this.portalDeckRing = B.MeshBuilder.CreateTorus(
       'teleporter_deck_ring',
-      { diameter: 2.28, thickness: 0.075, tessellation: 48 },
+      { diameter: 3.35, thickness: 0.095, tessellation: 48 },
       s
     );
-    this.portalDeckRing.position.set(0, 0.17, pz);
+    this.portalDeckRing.position.set(0, 0.23, pz);
     this.portalDeckRing.material = this.portalCoreMat;
     this.portalDeckRing.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.portalDeckRing.parent = this.root;
     this._registerMesh(this.portalDeckRing, { freeze: true, mirror: true });
 
-    // Grand upright bronze-and-emerald portal archway framing the Teleportation Pad
+    // Grand upright 5.4m bronze portal archway framing the Teleportation Pad
     const archOuter = B.MeshBuilder.CreateTorus(
       'teleporter_arch_outer',
-      { diameter: 3.55, thickness: 0.13, tessellation: 48 },
+      { diameter: 5.4, thickness: 0.18, tessellation: 56 },
       s
     );
-    archOuter.position.set(0, 2.0, pz);
+    archOuter.position.set(0, 3.05, pz);
     archOuter.rotation.x = Math.PI * 0.5;
     archOuter.material = this.bronzePBR;
     archOuter.renderingGroupId = RENDER_GROUPS.ENVIRONMENT;
@@ -781,10 +807,10 @@ export class Level14SanctuaryScene {
     // Counter-rotating kinetic energy halo rings suspended inside the portal archway
     this.portalHaloOuter = B.MeshBuilder.CreateTorus(
       'teleporter_halo_outer',
-      { diameter: 3.05, thickness: 0.055, tessellation: 48 },
+      { diameter: 4.65, thickness: 0.075, tessellation: 56 },
       s
     );
-    this.portalHaloOuter.position.set(0, 2.0, pz);
+    this.portalHaloOuter.position.set(0, 3.05, pz);
     this.portalHaloOuter.rotation.x = Math.PI * 0.5;
     this.portalHaloOuter.material = this.portalCoreMat;
     this.portalHaloOuter.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
@@ -793,24 +819,24 @@ export class Level14SanctuaryScene {
 
     this.portalHaloInner = B.MeshBuilder.CreateTorus(
       'teleporter_halo_inner',
-      { diameter: 2.35, thickness: 0.045, tessellation: 48 },
+      { diameter: 3.65, thickness: 0.06, tessellation: 56 },
       s
     );
-    this.portalHaloInner.position.set(0, 2.0, pz);
+    this.portalHaloInner.position.set(0, 3.05, pz);
     this.portalHaloInner.rotation.x = Math.PI * 0.5;
     this.portalHaloInner.material = this.emissivePlatinumMat;
     this.portalHaloInner.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     this.portalHaloInner.parent = this.root;
     this._registerMesh(this.portalHaloInner, { freeze: false, mirror: true });
 
-    // Translucent vertical warp beacon column (strictly obeys Ghost Material Invariants!)
+    // Translucent vertical warp beacon column soaring to the cathedral vault (strict Ghost invariants!)
     this.portalBeamMat = createGhostMaterial(s, 'teleporter_beam_mat', PALETTE.accent.emerald, 0.31);
     this.portalBeam = B.MeshBuilder.CreateCylinder(
       'teleporter_beam',
-      { diameter: 2.1, height: 8.6, tessellation: 32 },
+      { diameter: 3.0, height: 18.0, tessellation: 32 },
       s
     );
-    this.portalBeam.position.set(0, 4.4, pz);
+    this.portalBeam.position.set(0, 9.2, pz);
     this.portalBeam.material = this.portalBeamMat;
     this.portalBeam.isVisible = false;
     this.portalBeam.isPickable = false;
@@ -818,10 +844,10 @@ export class Level14SanctuaryScene {
     this.portalBeam.parent = this.root;
 
     // Dedicated reactive emerald-gold point light illuminating the opened North Portal
-    this.portalLight = new B.PointLight('teleporter_point_light', new B.Vector3(0, 2.2, pz), s);
+    this.portalLight = new B.PointLight('teleporter_point_light', new B.Vector3(0, 3.4, pz), s);
     this.portalLight.diffuse = B.Color3.FromHexString(PALETTE.accent.emerald);
     this.portalLight.intensity = 0.0;
-    this.portalLight.range = 14.0;
+    this.portalLight.range = 28.0;
   }
 
   /**
@@ -982,19 +1008,19 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * Volumetric Clerestory Light Shafts & Radiant Slit Light Curtain (additive gradient sheets).
+   * Volumetric Clerestory Light Shafts & Radiant Slit Light Curtain (scaled for 22m high cathedral!).
    */
   _buildVolumetricLightShafts() {
     const B = this.B;
     const s = this.scene;
 
-    const goldShaftMat = createVolumetricShaftMaterial(s, 'aaa_clerestory_shaft', '#FFE6B0', 0.13);
-    [-3.2, 3.2].forEach((zPos, i) => {
-      for (const rotY of [0.35, -0.35]) {
-        const sheet = B.MeshBuilder.CreatePlane(`sun_shaft_${i}_${rotY}`, { width: 3.6, height: 10.6 }, s);
-        sheet.position.set(0, 5.4, zPos);
+    const goldShaftMat = createVolumetricShaftMaterial(s, 'aaa_clerestory_shaft', '#FFE6B0', 0.11);
+    [-11.0, -3.2, 3.2, 11.2].forEach((zPos, i) => {
+      for (const rotY of [0.38, -0.38]) {
+        const sheet = B.MeshBuilder.CreatePlane(`sun_shaft_${i}_${rotY}`, { width: 5.8, height: 21.6 }, s);
+        sheet.position.set(0, 10.9, zPos);
         sheet.rotation.y = rotY;
-        sheet.rotation.z = -0.14; // Matches directional clerestory sun angle!
+        sheet.rotation.z = -0.13; // Matches directional clerestory sun angle!
         sheet.material = goldShaftMat;
         sheet.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
         sheet.parent = this.root;
@@ -1002,11 +1028,11 @@ export class Level14SanctuaryScene {
       }
     });
 
-    // Razor-thin vertical platinum light curtain pouring south out of the 0.164m Hairline Slit!
-    const slitCurtainMat = createVolumetricShaftMaterial(s, 'aaa_slit_light_curtain', '#FFF6D6', 0.28);
-    const slitBeam = B.MeshBuilder.CreatePlane('slit_volumetric_curtain', { width: 1.9, height: 6.7 }, s);
-    slitBeam.position.set(0, 3.4, -2.05);
-    slitBeam.rotation.y = Math.PI * 0.5; // Thin luminous vertical fan extending outward along Z!
+    // Razor-thin vertical platinum light curtain pouring south out of the 13.6m Hairline Slit (strictly clear of slit jaws!)
+    const slitCurtainMat = createVolumetricShaftMaterial(s, 'aaa_slit_light_curtain', '#FFF6D6', 0.24);
+    const slitBeam = B.MeshBuilder.CreatePlane('slit_volumetric_curtain', { width: 2.8, height: 13.4 }, s);
+    slitBeam.position.set(0, 6.75, -2.75);
+    slitBeam.rotation.y = Math.PI * 0.5;
     slitBeam.material = slitCurtainMat;
     slitBeam.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     slitBeam.parent = this.root;
@@ -1015,33 +1041,33 @@ export class Level14SanctuaryScene {
   }
 
   /**
-   * GPU-style Soft Radial Golden Sanctuary Dust Motes drifting upward through the sunbeams.
+   * GPU-style Soft Radial Golden Sanctuary Dust Motes drifting across the entire 34m x 44m x 22m cathedral.
    */
   _buildSanctuaryParticles() {
     const B = this.B;
     const s = this.scene;
 
-    const ps = new B.ParticleSystem('sanctuary_motes_ps', 140, s);
+    const ps = new B.ParticleSystem('sanctuary_motes_ps', 220, s);
     ps.particleTexture = createSoftGlowParticleTexture(s);
-    ps.emitter = new B.Vector3(0, 0.6, -1.5);
-    ps.minEmitBox = new B.Vector3(-5.8, 0, -6.5);
-    ps.maxEmitBox = new B.Vector3(5.8, 6.2, 6.5);
+    ps.emitter = new B.Vector3(0, 1.0, -1.5);
+    ps.minEmitBox = new B.Vector3(-14.0, 0, -19.0);
+    ps.maxEmitBox = new B.Vector3(14.0, 15.0, 16.0);
 
     ps.color1 = new B.Color4(1.0, 0.94, 0.76, 0.72);
     ps.color2 = new B.Color4(0.97, 0.76, 0.27, 0.48);
     ps.colorDead = new B.Color4(0.97, 0.76, 0.27, 0.0);
 
-    ps.minSize = 0.035;
-    ps.maxSize = 0.095;
-    ps.minLifeTime = 4.0;
-    ps.maxLifeTime = 8.5;
-    ps.emitRate = 22;
+    ps.minSize = 0.05;
+    ps.maxSize = 0.14;
+    ps.minLifeTime = 4.5;
+    ps.maxLifeTime = 9.5;
+    ps.emitRate = 32;
     ps.blendMode = B.ParticleSystem.BLENDMODE_ADD;
     ps.gravity = new B.Vector3(0, 0.04, 0);
-    ps.direction1 = new B.Vector3(-0.08, 0.14, -0.08);
-    ps.direction2 = new B.Vector3(0.08, 0.28, 0.08);
-    ps.minEmitPower = 0.15;
-    ps.maxEmitPower = 0.4;
+    ps.direction1 = new B.Vector3(-0.1, 0.16, -0.1);
+    ps.direction2 = new B.Vector3(0.1, 0.34, 0.1);
+    ps.minEmitPower = 0.18;
+    ps.maxEmitPower = 0.48;
     ps.updateSpeed = 0.014;
     ps.renderingGroupId = RENDER_GROUPS.PUZZLE_AND_GHOSTS;
     ps.start();
@@ -1050,10 +1076,10 @@ export class Level14SanctuaryScene {
 
   _finalizeMirrorAndShadows() {
     const B = this.B;
-    const sg = new B.ShadowGenerator(512, this.keyLight);
+    const sg = new B.ShadowGenerator(1024, this.keyLight);
     sg.usePercentageCloserFiltering = true;
     sg.filteringQuality = B.ShadowGenerator.QUALITY_LOW;
-    sg.bias = 0.001;
+    sg.bias = 0.0012;
     sg.darkness = 0.35;
     for (const m of this.shadowCasters) {
       sg.addShadowCaster(m, false);
@@ -1082,7 +1108,7 @@ export class Level14SanctuaryScene {
 
     // Advance victory monolith-parting progress first so key orb & portal stay synchronized
     if (state.completed) {
-      this.monolithOpenProgress = Math.min(1, this.monolithOpenProgress + dtSec * 0.56);
+      this.monolithOpenProgress = Math.min(1, this.monolithOpenProgress + dtSec * 0.52);
     } else {
       this.monolithOpenProgress = 0;
     }
@@ -1102,7 +1128,7 @@ export class Level14SanctuaryScene {
     // Once unlocked as the key, the restored orb levitates upward above the North Pedestal
     // so the player can walk unobstructed straight beneath it to the North Teleportation Pad!
     const hoverOffset = state.completed
-      ? monolithEased * 1.78 + Math.sin(this.elapsed * 2.2) * 0.06
+      ? monolithEased * 2.15 + Math.sin(this.elapsed * 2.2) * 0.06
       : Math.sin(this.elapsed * 2.0) * 0.04;
     this.orbRoot.position.set(0, LEVEL14_CONFIG.orbCenterY + hoverOffset, state.orbZ);
     this.orbLight.position.set(0, LEVEL14_CONFIG.orbCenterY + hoverOffset + 0.25, state.orbZ);
@@ -1168,19 +1194,19 @@ export class Level14SanctuaryScene {
     if (this.barrierFlash > 0.02) {
       this.barrierPlane.setEnabled(true);
       this.barrierPlane.position.z =
-        state.isOrbOverlappingWallZ() ? state.orbZ : LEVEL14_CONFIG.wallZMin - 0.06;
+        state.isOrbOverlappingWallZ() ? state.orbZ : LEVEL14_CONFIG.wallZMin - 0.14;
       this.barrierMat.alpha = Math.min(0.45, this.barrierFlash * 0.42);
       this.slitLipMat.emissiveColor = B.Color3.Lerp(
         B.Color3.FromHexString(PALETTE.accent.platinum),
         B.Color3.FromHexString(PALETTE.accent.amberCoral),
         this.barrierFlash
-      ).scale(1.85);
+      ).scale(1.65);
     } else {
       this.barrierPlane.setEnabled(false);
       const slitColor = isBlade || state.completed
         ? B.Color3.FromHexString(PALETTE.accent.emerald)
         : B.Color3.FromHexString(PALETTE.accent.platinum);
-      this.slitLipMat.emissiveColor = slitColor.scale(1.85);
+      this.slitLipMat.emissiveColor = slitColor.scale(1.65);
     }
 
     // 5. North target ghost silhouette
@@ -1190,23 +1216,23 @@ export class Level14SanctuaryScene {
       this.northTargetGhostMat.alpha = Math.min(0.35, Math.max(0.30, 0.31 + hintPulse));
     }
 
-    // 6. Victory: Twin 6.8m Monoliths slide wide open + Sanctuary Inner Gate opens + North Teleportation Pad ignites!
-    this.monolithLeftGroup.position.x = -monolithEased * 2.65;
-    this.monolithRightGroup.position.x = monolithEased * 2.65;
+    // 6. Victory: Twin 13.6m Monoliths slide wide open (±3.85m -> 7.86m grand gateway!) + Gate + North Portal!
+    this.monolithLeftGroup.position.x = -monolithEased * 3.85;
+    this.monolithRightGroup.position.x = monolithEased * 3.85;
     if (this.slitVolumetricCurtain) {
       this.slitVolumetricCurtain.isVisible = this.monolithOpenProgress < 0.12;
     }
 
     if (state.completed) {
       this.victoryBeam.isVisible = true;
-      this.gateOpenProgress = Math.min(1, this.gateOpenProgress + dtSec * 0.72);
+      this.gateOpenProgress = Math.min(1, this.gateOpenProgress + dtSec * 0.65);
       const eased = 1 - Math.pow(1 - this.gateOpenProgress, 3);
-      this.gateLeft.position.x = -1.16 - eased * 2.05;
-      this.gateRight.position.x = 1.16 + eased * 2.05;
+      this.gateLeft.position.x = -2.22 - eased * 3.8;
+      this.gateRight.position.x = 2.22 + eased * 3.8;
       this.gateEmblem.scaling.setAll(1 + eased * 0.25);
       this.gateEmblem.isVisible = this.gateOpenProgress < 0.7;
       this.northRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(1.8);
-      this.orbLight.intensity = 3.0;
+      this.orbLight.intensity = 3.2;
 
       // Ignite North Teleportation Pad rings & emerald warp column
       this.portalBeam.isVisible = true;
@@ -1216,16 +1242,16 @@ export class Level14SanctuaryScene {
       this.portalHaloInner.rotation.y = -Math.sin(this.elapsed * 1.1) * 0.28;
       const portalPulse = 1.45 + 0.35 * Math.sin(this.elapsed * 3.4);
       this.portalCoreMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.emerald).scale(portalPulse);
-      this.portalLight.intensity = 2.6 * monolithEased;
+      this.portalLight.intensity = 3.2 * monolithEased;
     } else {
       this.victoryBeam.isVisible = false;
       this.gateOpenProgress = 0;
-      this.gateLeft.position.x = -1.16;
-      this.gateRight.position.x = 1.16;
+      this.gateLeft.position.x = -2.22;
+      this.gateRight.position.x = 2.22;
       this.gateEmblem.scaling.setAll(1);
       this.gateEmblem.isVisible = true;
       this.northRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(1.45);
-      this.orbLight.intensity = 1.9;
+      this.orbLight.intensity = 2.2;
 
       // Dormant Teleportation Pad
       this.portalBeam.isVisible = false;

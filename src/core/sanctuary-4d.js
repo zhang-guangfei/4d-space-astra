@@ -30,25 +30,28 @@ import {
 
 export const LEVEL14_CONFIG = Object.freeze({
   radiusR: 1.0, // Intrinsic 3D radius (2.0 m diameter)
-  wHalfThickness: 0.001, // Near-zero 4D W half-thickness (0.002 m sheet; slight tilt immediately collapses W=0 slice to 2D disc!)
+  wHalfThickness: 0.001, // Near-zero 4D W half-thickness (0.002 m sheet; slight tilt immediately collapses slice to 2D disc!)
   slitHalfWidth: 0.082, // Monolith slit half-width (0.164 m total clear gap)
   slitClearanceLimit: 0.078, // Required xMax(theta) <= 0.078 m (theta = 90° ± 4.4°)
   bladeAngleToleranceDeg: 4.4, // 90° ± 4.4°
   restoreAngleToleranceDeg: 5.0, // 0° or 180° ± 5°
   wallZMin: -1.2, // Monolith wall slab spans Z in [-1.2, +1.2] across ALL W slices
   wallZMax: 1.2,
-  wallHeight: 6.8, // 6.8 m obsidian-gold sanctuary monoliths
+  wallHeight: 13.6, // 13.6 m towering obsidian-gold sanctuary monoliths (2x expanded cathedral!)
+  hallHalfX: 14.2, // 28.4 m walkable width (34 m outer walls — >2.15x wider!)
+  hallMinZ: -19.5, // 35.0 m walkable length (44 m outer length — >2.2x longer!)
+  hallMaxZ: 15.5,
   orbStartZ: -3.2, // South pedestal Z
   orbTargetZ: 3.2, // North destination golden pedestal Z
   orbCenterY: 1.75, // Levitation center height
   orbMinZ: -4.2,
   orbMaxZ: 3.8,
   pedestalSnapRadiusZ: 0.45,
-  teleporterZ: 6.4, // North Next-Level Teleportation Pad Z (walkable once monolith walls open!)
-  teleporterRadius: 1.35,
+  teleporterZ: 11.2, // North Next-Level Teleportation Pad Z (walkable once monolith walls open!)
+  teleporterRadius: 1.85,
   playerWMin: -2.2,
   playerWMax: 2.2,
-  grabInteractDistance: 4.2,
+  grabInteractDistance: 4.6,
 });
 
 /**
@@ -176,7 +179,7 @@ export class Level14HairlineSlitState {
   }
 
   reset() {
-    this.playerPos = [1.55, 1.85, -7.8, 0]; // [x, y, z, w] hero diagonal vantage of orb + monolith slit
+    this.playerPos = [2.6, 1.85, -10.8, 0]; // [x, y, z, w] grand diagonal vantage of 2x cathedral nave + orb + 13.6m monolith slit
     this.orbZ = this.config.orbStartZ; // -3.2 m
     this.thetaDeg = 0; // 4D XW rotation angle around YZ plane (degrees)
     this.orbQuat3D = qIdentity(); // Pure SO(3) 3D orientation (changes meridian rings only!)
@@ -307,7 +310,13 @@ export class Level14HairlineSlitState {
    * Move player in XZ plane (walk mode), respecting monolith all-W wall collision & hall bounds.
    * After victory, monolith opens so player can walk north straight onto the Teleportation Pad!
    */
-  movePlayerXZ(dx, dz, hallHalfX = 6.2, hallMinZ = -8.5, hallMaxZ = 7.4) {
+  movePlayerXZ(
+    dx,
+    dz,
+    hallHalfX = this.config.hallHalfX,
+    hallMinZ = this.config.hallMinZ,
+    hallMaxZ = this.config.hallMaxZ
+  ) {
     const currX = this.playerPos[0];
     const currZ = this.playerPos[2];
     let targetX = clamp(currX + dx, -hallHalfX, hallHalfX);
@@ -383,7 +392,7 @@ export class Level14HairlineSlitState {
     // Releasing grab MUST ALWAYS succeed (including after victory!) so camera is never trapped
     this.grabbed = false;
     if (this.playerPos[2] > this.config.wallZMin - 1.2) {
-      this.playerPos = [0, 1.85, -5.2, 0];
+      this.playerPos = [0, 1.85, -6.2, 0];
     }
     return { grabbed: false, reason: 'released' };
   }

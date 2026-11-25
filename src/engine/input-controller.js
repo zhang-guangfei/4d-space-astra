@@ -41,8 +41,8 @@ export class InputController {
     this.lastMouseX = 0;
     this.lastMouseY = 0;
 
-    this.yaw = -0.20; // Diagonal hero framing of Passing Orb + Twin Monolith Hairline Slit
-    this.pitch = 0.03;
+    this.yaw = -0.22; // Grand diagonal framing of 2x cathedral nave + Passing Orb + 13.6m Hairline Slit
+    this.pitch = 0.04;
     this.mouseSensitivity = 0.0028;
     this.wheelSensitivity = 1.0;
 

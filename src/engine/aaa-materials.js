@@ -308,7 +308,7 @@ export function createCarvedObsidianMonolithPBR(scene, name = 'aaa_monolith_pbr'
 /**
  * Polished Obsidian Sanctuary Floor with Real-Time MirrorTexture Reflection + Inlaid Bronze Tiles.
  */
-export function createSanctuaryMirrorFloorPBR(scene, mirrorRenderList) {
+export function createSanctuaryMirrorFloorPBR(scene, mirrorRenderList, uScale = 11, vScale = 14) {
   const B = globalThis.BABYLON;
   const size = 512;
 
@@ -362,13 +362,20 @@ export function createSanctuaryMirrorFloorPBR(scene, mirrorRenderList) {
   }
 
   albedoTex.update();
-  albedoTex.uScale = 5;
-  albedoTex.vScale = 7;
+  albedoTex.uScale = uScale;
+  albedoTex.vScale = vScale;
   ormTex.update();
-  ormTex.uScale = 5;
-  ormTex.vScale = 7;
+  ormTex.uScale = uScale;
+  ormTex.vScale = vScale;
 
-  const normalTex = buildNormalTextureFromHeightCanvas(scene, 'aaa_floor_normal', heightCanvas, 1.9, 5, 7);
+  const normalTex = buildNormalTextureFromHeightCanvas(
+    scene,
+    'aaa_floor_normal',
+    heightCanvas,
+    1.9,
+    uScale,
+    vScale
+  );
 
   // Real-time blurred MirrorTexture reflecting monoliths, glowing slit, and floating orb!
   const mirrorTex = new B.MirrorTexture('sanctuary_floor_mirror', 512, scene, true);

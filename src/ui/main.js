@@ -37,10 +37,10 @@ function boot() {
   const scene = new B.Scene(engine);
   scene.skipPointerMovePicking = true;
 
-  const camera = new B.FreeCamera('sanctuary_cam', new B.Vector3(1.55, 1.85, -7.8), scene);
-  camera.minZ = 0.08;
-  camera.maxZ = 120;
-  camera.fov = 0.9;
+  const camera = new B.FreeCamera('sanctuary_cam', new B.Vector3(2.6, 1.85, -10.8), scene);
+  camera.minZ = 0.20;
+  camera.maxZ = 160;
+  camera.fov = 0.92;
 
   // 2. Pure Core State & Tiered Hints (Level 14)
   const state = new Level14HairlineSlitState();
@@ -176,7 +176,7 @@ function boot() {
     teleporterOpen = false;
     hud?.resetBanner();
     input.setGrabbed(false);
-    input.setLookAngles(-0.20, 0.03);
+    input.setLookAngles(-0.22, 0.04);
     sanctuary3D.setHintHighlight(false);
     lastBeat = 0;
     victoryAnnounced = false;
@@ -418,7 +418,7 @@ function boot() {
           // Dismiss banner smoothly once player begins walking through the parted walls
           hud?.dismissVictoryBanner();
         }
-        const speed = move.sprint ? 5.6 : 3.5;
+        const speed = move.sprint ? 8.5 : 5.2;
         const sinY = Math.sin(input.yaw);
         const cosY = Math.cos(input.yaw);
         const rawDx = move.forward * sinY + move.right * cosY;

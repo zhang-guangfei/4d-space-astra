@@ -91,10 +91,10 @@ export class TacticalConsole {
     const cardY = 22;
     const cardH = cssH - 36;
 
-    // Map hall X in [-6.5, +6.5], Z in [-7.8, +7.2] into card coordinates
-    const zMin = -7.8;
-    const zMax = 7.2;
-    const xSpan = 12.6;
+    // Map 2x expanded hall X in [-15.0, +15.0], Z in [-20.5, +16.5] into card coordinates
+    const zMin = -20.5;
+    const zMax = 16.5;
+    const xSpan = 30.0;
 
     SLICES.forEach((slice, idx) => {
       const x0 = padX + idx * (cardW + gap);

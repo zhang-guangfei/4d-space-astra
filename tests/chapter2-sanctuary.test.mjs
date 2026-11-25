@@ -107,11 +107,13 @@ test('Level 14 Beat 2 & 3 (把玩 → 运用): 3D drag never narrows orb, 90° b
   assert.equal(s.grabbed, false);
   assert.ok(s.playerPos[2] < LEVEL14_CONFIG.wallZMin, 'Released player must return cleanly to South side');
 
-  // 9. Key-opens-wall & Teleporter progression: monolith opens so player walks through Z=0 onto Teleporter (Z=6.4)!
+  // 9. Key-opens-wall & Teleporter progression: monolith opens so player walks through Z=0 onto Teleporter (Z=11.2) in 2x hall!
+  assert.ok(LEVEL14_CONFIG.hallHalfX >= 14.0, 'Expanded hall must be >= 2x wider');
+  assert.ok(LEVEL14_CONFIG.hallMaxZ - LEVEL14_CONFIG.hallMinZ >= 34.0, 'Expanded hall must be >= 2x longer');
   assert.equal(s.isPlayerBlockedByMonolith(0, 0), false, 'Monolith wall must open automatically after victory');
   s.playerPos = [0, 1.85, -3.5, 0];
   let reachedPortal = false;
-  for (let step = 0; step < 25; step += 1) {
+  for (let step = 0; step < 45; step += 1) {
     const walkRes = s.movePlayerXZ(0, 0.45);
     assert.equal(walkRes.blockedByWall, false, 'Opened monolith must allow unobstructed passage');
     if (walkRes.justEnteredTeleporter) {
