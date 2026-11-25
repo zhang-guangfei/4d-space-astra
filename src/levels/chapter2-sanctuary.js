@@ -1303,14 +1303,11 @@ export class Level14SanctuaryScene {
 
       // Decorative meridian rings stay crisp on full sphere, dim & soften cleanly upon tilt
       // so they NEVER compete with the cyan slice or look like an outer iron hoop!
-      this.orbMeridianRoot.setEnabled(!isInspectingOtherW);
+      this.orbMeridianRoot.setEnabled(!isTilted && !isInspectingOtherW);
       this.orbMeridianRoot.position.set(slice.xCenter, 0, 0);
       this.orbMeridianRoot.scaling.set(sx, sy, sz);
-      const ringGlow = isTilted ? 0.14 : 1.05;
-      this.orbRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(ringGlow);
-      this.orbCenterRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(
-        isTilted ? 0.28 : 1.05
-      );
+      this.orbRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.goldWPos).scale(1.05);
+      this.orbCenterRingMat.emissiveColor = B.Color3.FromHexString(PALETTE.accent.platinum).scale(1.05);
     } else {
       this.orbSliceCore.setEnabled(false);
       this.orbMeridianRoot.setEnabled(false);

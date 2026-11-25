@@ -285,6 +285,7 @@ test('先开侧视或先碰壁都能取证；按住推球键时仍然可以反�
     state.stepInspectW(1);
     assert.equal(state.inspectW, 0);
     assert.equal(state.inspectModeActive, false);
+    assert.match(state.getHonestViewBadge().title, /原层.*缝内/);
     assert.equal(state.orbZ, z);
     assert.equal(state.thetaDeg, 84);
     assert.notEqual(state.startCollisionInspect(), 0);

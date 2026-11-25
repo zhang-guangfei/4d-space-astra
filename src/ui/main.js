@@ -61,7 +61,6 @@ function boot() {
   let teleporterOpen = false;
   let audioUnlocked = false;
   let northStuckTimer = 0;
-  let northPushAttempts = 0;
 
   // Discovery-first coaching milestones (every moment fires ONCE at the exact right beat!)
   const coached = {
@@ -78,7 +77,6 @@ function boot() {
   const resetCoaching = () => {
     for (const k of Object.keys(coached)) coached[k] = false;
     northStuckTimer = 0;
-    northPushAttempts = 0;
   };
 
   // 3. Audio & Dual-Character Voice (D12)
@@ -425,12 +423,13 @@ function boot() {
     if (!paused && !guideOpen && !teleporterOpen) {
       // Smoothly glide observer's w-layer during Tab collision inspection after a tilted bump
       const inspectStatus = state.stepInspectW(dtSec);
+      if (!state.inspectModeActive) voice.dismissCue('wall-evidence');
       if (inspectStatus.arrivedAtEvidence && !coached.wallEvidenceNamed) {
         coached.wallEvidenceNamed = true;
         voice.speak(
           'tomb',
           '看红圈。换了一层，这里也有墙，这一片球身还在缝外。',
-          { durationMs: 6800 }
+          { durationMs: 6800, cue: 'wall-evidence' }
         );
       }
 
@@ -479,12 +478,6 @@ function boot() {
             if (!coached.northArrived) {
               coached.northArrived = true;
               voice.speak('tomb', '球送到了。看看底座的形状。', { durationMs: 5800 });
-            } else if (Math.abs(state.orbZ - state.config.orbMaxZ) < 0.05 && move.forward > 0) {
-              northPushAttempts += dtSec;
-              if (northPushAttempts > 1.2 && !coached.northRestoreNudge) {
-                coached.northRestoreNudge = true;
-                voice.speak('tomb', '还记得它刚才是怎么立起来的吗？', { durationMs: 5800 });
-              }
             }
           }
           announceBeatAdvance();

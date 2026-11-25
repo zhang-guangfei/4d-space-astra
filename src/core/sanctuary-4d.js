@@ -705,12 +705,23 @@ export class Level14HairlineSlitState {
     if (this.viewMode === 'side_xzw') {
       const comparing = this.canCompareLayers;
       const atNeighbor = this.inspectModeActive && this.getWallOverlapX(sl) !== null;
+      if (comparing) {
+        if (!this.inspectModeActive && this.inspectW === 0) {
+          return { mode: 'side_xzw', title: '原层 · 青色截面落在缝内', detail: '球和墙都没动。可以再看一次相邻层。' };
+        }
+        if (atNeighbor) {
+          return { mode: 'side_xzw', title: '相邻层 · 球身越过了缝边', detail: '这一层也有墙。看看红圈里的球身和缝边。' };
+        }
+        return {
+          mode: 'side_xzw',
+          title: this.inspectModeActive ? '正在移向相邻层' : '正在回到原层',
+          detail: '球和墙都停在原处，只有观察层在移动。',
+        };
+      }
       return {
         mode: 'side_xzw',
-        title: atNeighbor ? '相邻层 · 球身越过了缝边' : comparing ? '对照观察 · 球和墙都停在原处' :
-          `第四维侧视 · 球的半径始终是 ${this.config.radiusR.toFixed(2)}m`,
-        detail: atNeighbor ? '这一层也有墙。看看红圈里的球身和缝边。' :
-          comparing ? '沿第四维换一层看，留意缝边的位置。' : '金色外轮廓把球在各层占的位置叠在了一起。',
+        title: `第四维侧视 · 球的半径始终是 ${this.config.radiusR.toFixed(2)}m`,
+        detail: '金色外轮廓把球在各层占的位置叠在了一起。',
       };
     }
     if (this.grabbed) {

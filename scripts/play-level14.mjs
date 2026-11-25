@@ -14,7 +14,7 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
-const page = await browser.newPage({ viewport: { width: 1120, height: 720 }, locale: 'zh-CN' });
+const page = await browser.newPage({ viewport: { width: 880, height: 620 }, locale: 'zh-CN' });
 page.setDefaultTimeout(100_000);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
@@ -23,21 +23,26 @@ const canvas = page.locator('#render-canvas');
 const title = page.locator('#honest-badge-title');
 const subtitle = page.locator('#subtitle-text');
 const reading = page.locator('#telemetry-orb');
-const photo = (name) => page.screenshot({ path: path.join(output, name + '.png'), timeout: 30_000 });
+async function photo(name) {
+  console.log('试玩画面', name);
+  await page.screenshot({ path: path.join(output, name + '.png'), timeout: 30_000 });
+}
 const visibleText = (locator, text) => locator.filter({ hasText: text }).waitFor();
 
 async function holdUntil(key, check) {
+  await page.keyboard.down('Shift');
   await page.keyboard.down(key);
   try {
     await check();
   } finally {
     await page.keyboard.up(key);
+    await page.keyboard.up('Shift');
   }
 }
 
 async function wheelTo(angle, ticks) {
   // Keep the pointer over the game itself, including after using a HUD button.
-  await canvas.hover({ position: { x: 565, y: 295 } });
+  await canvas.hover({ position: { x: 480, y: 280 } });
   for (let i = 0; i < Math.abs(ticks); i++) {
     await page.mouse.wheel(0, ticks > 0 ? -140 : 140);
     // Each wheel event must reach the game before the next one can be coalesced.
@@ -73,7 +78,8 @@ try {
   await visibleText(subtitle, '换了一层');
   await photo('02-neighbor');
   await page.keyboard.press('c');
-  await visibleText(reading, '观察层 w 0.00');
+  await visibleText(title, '原层 · 青色截面落在缝内');
+  await page.locator('#subtitle-bar.is-visible').filter({ hasText: '看红圈' }).waitFor({ state: 'hidden' });
   await photo('03-original');
   await page.getByRole('button', { name: /查看相邻层/ }).click();
   await visibleText(title, '相邻层 · 球身越过了缝边');
@@ -98,7 +104,8 @@ try {
   console.log('通过：轻转 7°，先碰壁再开侧视。');
   assert.deepEqual(errors, [], 'Uncaught errors during play');
 } catch (error) {
-  console.error('当前画面', await title.textContent(), await reading.textContent(), await subtitle.textContent(), errors);
+  console.error(error.message, errors);
+  console.error(await page.locator('body').innerText({ timeout: 5000 }).catch(() => '页面未响应'));
   await photo('failure').catch(() => {});
   throw error;
 } finally {
