@@ -55,7 +55,6 @@ export class HudController {
       tabEntryLabel: document.getElementById('tab-entry-label'),
       wheelHandoffCue: document.getElementById('wheel-handoff-cue'),
       sliceCalloutTag: document.getElementById('slice-callout-tag'),
-      wRulerBox: document.getElementById('w-ruler-box'),
       reticle: document.getElementById('reticle'),
       reticlePrompt: document.getElementById('reticle-prompt'),
       controlStripText: document.getElementById('control-strip-text'),
@@ -291,8 +290,7 @@ export class HudController {
     this.els.btnHintLabel.textContent = `提示 ${hintSnapshot.tier}/${hintSnapshot.maxTier}`;
     this.els.btnHint.classList.toggle('is-hint-pulse', hintSnapshot.pulseSuggested);
 
-    // 5. Progressive Tab Entry Pill + Right-Edge w-Ruler Dimming while Grabbed
-    this.els.wRulerBox?.classList.toggle('is-orb-mode', state.grabbed && !state.hasRotated4DWhileGrabbed && pw === 0);
+    // 5. Progressive Tab Entry Pill
     if (this.els.tabEntryPill) {
       const showPill = state.grabbed && state.viewMode !== 'side_xzw' && !state.completed;
       this.els.tabEntryPill.hidden = !showPill;
@@ -357,7 +355,7 @@ export class HudController {
         '巨墙已敞开 · 按 <strong>WASD</strong> 穿过通道踏上前方<strong>北侧传送台</strong> · 按 <strong>R</strong> 重玩';
     } else if (state.grabbed) {
       this.els.controlStripText.innerHTML =
-        '<strong>滚轮</strong> 转球 · <strong>Shift + 滚轮</strong> 沿 W 轴观察 · <strong>W/S</strong> 推拉 · <strong>Tab</strong> 侧视 · <strong>E</strong> 松开';
+        '<strong>滚轮</strong> 沿 W 轴移动 · <strong>Shift + 滚轮</strong> 转球 · <strong>W/S</strong> 推拉 · <strong>Tab</strong> 侧视 · <strong>E</strong> 松开';
     } else {
       this.els.controlStripText.innerHTML =
         'WASD 移动 · 拖拽/点击环视 · <strong>滚轮沿 w 轴移动</strong> · 靠近圆球按 <strong>E</strong> 抓取 · <strong>H</strong> 提示 · <strong>I</strong> 原理';

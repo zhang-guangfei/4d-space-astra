@@ -438,12 +438,12 @@ body {
 .goal-marker.opens-left figure { left: auto; right: 35px; }
 .goal-marker.opens-left::before { left: auto; right: 5px; transform: rotate(28deg); transform-origin: right; }
 
-/* Floating Scroll-Wheel Handoff Cue (glides from right w-ruler to orb on E grab!) */
+/* Rotation shortcut beside the grabbed orb */
 .wheel-handoff-cue {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(160px, 40px) scale(0.92);
+  transform: translate(-50%, -50%) scale(0.92);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -563,11 +563,6 @@ body {
   50% {
     box-shadow: 0 0 22px 4px rgba(247, 195, 70, 0.56);
   }
-}
-
-.w-ruler.is-orb-mode {
-  opacity: 0.34;
-  transition: opacity 0.32s ease;
 }
 
 /* Bottom-Left: Honest XZW Side-View Panel */

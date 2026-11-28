@@ -41,15 +41,21 @@ async function holdUntil(key, check) {
   }
 }
 
-async function wheelTo(angle, ticks) {
-  // Keep the pointer over the game itself, including after using a HUD button.
-  await canvas.hover({ position: { x: 480, y: 280 } });
-  for (let i = 0; i < Math.abs(ticks); i++) {
-    await page.mouse.wheel(0, ticks > 0 ? -140 : 140);
-    // Each wheel event must reach the game before the next one can be coalesced.
-    const expected = angle - (Math.abs(ticks) - i - 1) * 7 * Math.sign(ticks);
-    await visibleText(reading, 'θ ' + expected.toFixed(1) + '°');
+async function rotateTo(angle, ticks, target = canvas) {
+  if (target === canvas) await canvas.hover({ position: { x: 480, y: 280 } });
+  else await target.hover();
+  const { w } = await geometry();
+  await page.keyboard.down('Shift');
+  try {
+    for (let i = 0; i < Math.abs(ticks); i++) {
+      await page.mouse.wheel(0, ticks > 0 ? -140 : 140);
+      const expected = angle - (Math.abs(ticks) - i - 1) * 7 * Math.sign(ticks);
+      await visibleText(reading, 'θ ' + expected.toFixed(1) + '°');
+    }
+  } finally {
+    await page.keyboard.up('Shift');
   }
+  assert.equal((await geometry()).w, w, 'Shift + wheel must rotate at the current W');
 }
 
 async function grab() {
@@ -86,16 +92,13 @@ async function checkOriginalLayerAtRest() {
 
 async function observeByWheel(ticks) {
   await canvas.hover({ position: { x: 480, y: 280 } });
-  await page.keyboard.down('Shift');
-  try {
-    for (let i = 0; i < Math.abs(ticks); i++) {
-      const { w } = await geometry();
-      await page.mouse.wheel(0, ticks > 0 ? -140 : 140);
-      await page.waitForFunction(previous => globalThis.__BEYOND3D__.state.playerPos[3] !== previous, w);
-    }
-  } finally {
-    await page.keyboard.up('Shift');
+  const { angle } = await geometry();
+  for (let i = 0; i < Math.abs(ticks); i++) {
+    const { w } = await geometry();
+    await page.mouse.wheel(0, ticks > 0 ? -140 : 140);
+    await page.waitForFunction(previous => globalThis.__BEYOND3D__.state.playerPos[3] !== previous, w);
   }
+  assert.equal((await geometry()).angle, angle, 'Plain wheel must keep the angle fixed');
 }
 
 try {
@@ -114,11 +117,11 @@ try {
   await visibleText(reading, '观察层 w 0.00');
   await grab();
   await goal.waitFor({ state: 'hidden' });
-  await wheelTo(7, 1);
+  await rotateTo(7, 1);
   await page.locator('#slice-callout-tag.is-visible').waitFor();
   await photo('01-first-turn');
-  await wheelTo(0, -1);
-  await wheelTo(84, 12);
+  await rotateTo(0, -1);
+  await rotateTo(84, 12);
 
   // Opening the side view first, then hitting the wall, must leave W at the origin.
   await page.keyboard.press('Tab');
@@ -139,14 +142,14 @@ try {
   await page.keyboard.press('c');
   assert.deepEqual(await checkOriginalLayerAtRest(), original);
   await page.locator('#subtitle-bar.is-visible').filter({ hasText: '你换了一层' }).waitFor({ state: 'hidden' });
-  await wheelTo(91, 1);
+  await rotateTo(91, 1, page.locator('#side-view-canvas'));
   await photo('04-upright');
   await holdUntil('w', () => visibleText(subtitle, '球送到了'));
   await page.keyboard.press('e');
   await visibleText(title, '球已放在墙后的金色底座上');
   await page.keyboard.press('e');
   await visibleText(title, '第四维侧视');
-  await wheelTo(0, -13);
+  await rotateTo(0, -13);
   await page.locator('#victory-banner:not([hidden])').waitFor();
   await page.locator('#reticle:not(.is-hidden)').waitFor();
   await holdUntil('w', () => page.locator('#teleporter-modal:not([hidden])').waitFor());
@@ -156,7 +159,7 @@ try {
   await page.locator('#btn-teleporter-replay').click();
   await visibleText(title, '三维切面');
   await grab();
-  await wheelTo(7, 1);
+  await rotateTo(7, 1);
   await holdUntil('w', () => page.locator('#tab-entry-pill.is-attention').waitFor());
   await page.keyboard.press('Tab');
   const atSeven = await checkOriginalLayerAtRest();

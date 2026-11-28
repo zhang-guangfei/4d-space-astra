@@ -656,16 +656,12 @@ export class Level14HairlineSlitState {
       return { mode, title: '球已放在墙后的金色底座上', detail: '按 E 重新操控底座上的球。' };
     }
     if (!this.completed && !this.getSliceAtPlayerW().intersects) {
-      return { mode, title: `${layer} · 这里没有球身`, detail: this.grabbed
-        ? '按住 Shift 反向拨滚轮，或按 C 回原层。'
-        : '反向拨滚轮，或按 C 回原层找到青色球。' };
+      return { mode, title: `${layer} · 这里没有球身`, detail: '反向拨滚轮，或按 C 回原层找到青色球。' };
     }
     if (this.hasInspectableContact) {
       return this.observedWallOverlapX !== null
         ? { mode, title: `${layer} · 球身越过了缝边`, detail: '对照同一条缝边。反向换层，看青色圆会回到哪里。' }
-        : { mode, title: `${layer} · 青色截面落在缝内`, detail: this.grabbed
-          ? '按住 Shift 拨滚轮，沿 W 轴看看别处的青色圆在哪。'
-          : '拨动滚轮沿 W 轴走，看看别处的青色圆在哪。' };
+        : { mode, title: `${layer} · 青色截面落在缝内`, detail: '拨动滚轮沿 W 轴走，看看别处的青色圆在哪。' };
     }
     if (this.viewMode === 'side_xzw') {
       return {
@@ -678,7 +674,7 @@ export class Level14HairlineSlitState {
       return {
         mode: 'slice',
         title: '我们所在的三维切面 · 正在操控圆球',
-        detail: w === 0 ? '滚轮转球 · W/S 推拉 · Tab 看侧视' : `${layer} · Shift + 滚轮沿 W 轴移动 · C 回原层`,
+        detail: w === 0 ? 'Shift + 滚轮转球 · W/S 推拉 · Tab 看侧视' : `${layer} · 滚轮沿 W 轴移动 · C 回原层`,
       };
     }
     const sign = w >= 0 ? '+' : '';

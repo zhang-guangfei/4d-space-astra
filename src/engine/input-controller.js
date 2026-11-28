@@ -13,8 +13,8 @@
  *   * E = Grab nearby 4D object (enter Third-Person Grab Stage)
  * - Grab Stage Mode:
  *   * Left-Drag = Pure 3D SO(3) rotation of grabbed object
- *   * Mouse Wheel = Sole 4D control: 4D rigid rotation around preset plane (XW around YZ)
- *   * Shift + Wheel (or wheel over the side view) = move the observer along W with the orb held still
+ *   * Shift + Wheel = 4D rigid rotation around preset plane (XW around YZ)
+ *   * Mouse Wheel = move the observer along W with the orb held still
  *   * W / S = Push / pull object along track (e.g. through Level 14 hairline slit)
  *   * E = Release object back to Walk Mode
  * - Global:
@@ -188,7 +188,7 @@ export class InputController {
       // Normalize wheel delta across trackpads & discrete mouse wheels
       const raw = clamp(e.deltaY || (e.shiftKey ? e.deltaX : 0), -140, 140);
       const dir = -raw / 100; // Scroll UP -> positive (+W or +theta)
-      this.cb.onWheel4D?.(dir * this.wheelSensitivity, e.shiftKey || e.currentTarget === this.sideView);
+      this.cb.onWheel4D?.(dir * this.wheelSensitivity, e.shiftKey);
     };
 
     this._onKeyDown = (e) => {

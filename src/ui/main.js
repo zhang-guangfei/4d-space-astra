@@ -3,7 +3,7 @@
  *
  * Discovery-First Guided Experience ("Show first -> point attention in 1 line -> let player verify!"):
  * 1. Opening: Show the actual north pedestal in a callout pinned to its location behind the wall.
- * 2. Grab (E): Scroll-wheel handoff cue glides from right w-ruler to orb + 1 line ("现在，滚轮转动的是你手里的球。");
+ * 2. Grab (E): Show rotation shortcut beside the orb + 1 line ("滚轮沿 W 轴移动。按住 Shift 拨滚轮，就能转动手里的球。");
  *    Side View stays tucked behind a clean [Tab] pill to prevent information overload.
  * 3. First Slight Tilt: Decorative rings dim, △ & ○ diameter markers fade outward reversibly, cyan disc shows
  *    "留在这一层的部分" tag + 1 observation ("你把球的一部分转出了我们这一层。青色的，是还留在这里的那一片。") -> STOP!
@@ -332,11 +332,11 @@ function boot() {
       if (res.grabbed) {
         input.setGrabbed(true);
         sfx.playGrabLock(true);
-        // Clean scroll-wheel handoff cue from right w-ruler to orb + 1 clear line!
+        // Show the rotation shortcut on grab.
         hud.showWheelHandoffCue(4800);
         if (!coached.firstGrabWheel) {
           coached.firstGrabWheel = true;
-          voice.speak('tomb', '现在，滚轮转动的是你手里的球。', { durationMs: 5000 });
+          voice.speak('tomb', '滚轮沿 W 轴移动。按住 Shift 拨滚轮，就能转动手里的球。', { durationMs: 5000 });
         }
         announceBeatAdvance();
       } else {
@@ -349,11 +349,11 @@ function boot() {
       state.rotateOrb3D(deltaYaw, deltaPitch);
       if (!coached.drag3DInvariant && state.hasRotated3DWhileGrabbed && !state.hasRotated4DWhileGrabbed) {
         coached.drag3DInvariant = true;
-        voice.speak('tomb', '这样转动，球的宽度一点也没变。试试拨动鼠标滚轮。', { durationMs: 5600 });
+        voice.speak('tomb', '这样转动，球的宽度一点也没变。试试按住 Shift 拨滚轮。', { durationMs: 5600 });
       }
     },
-    onWheel4D: (wheelUnits, observe) => {
-      if (!state.grabbed || observe) {
+    onWheel4D: (wheelUnits, shiftHeld) => {
+      if (!state.grabbed || !shiftHeld) {
         moveAlongW(wheelUnits);
         return;
       }
@@ -380,7 +380,7 @@ function boot() {
           hud.showSliceCallout(5800);
           voice.speak(
             'tomb',
-            '青色圆是这一层的球身。按住 Shift 拨滚轮，沿 W 轴看看另一层的圆在哪里。',
+            '青色圆是这一层的球身。拨滚轮，沿 W 轴看看另一层的圆在哪里。',
             { durationMs: 6800 }
           );
         }
@@ -451,7 +451,7 @@ function boot() {
                 coached.tiltedBlocked = true;
                 voice.speak(
                   'tomb',
-                  '球先停在这里。按住 Shift 拨滚轮，看看哪一层的青色圆伸出了缝边。',
+                  '球先停在这里。拨滚轮，看看哪一层的青色圆伸出了缝边。',
                   { durationMs: 6400 }
                 );
               }
@@ -532,7 +532,7 @@ function boot() {
           hud.showWheelHandoffCue(4800);
           if (!coached.firstGrabWheel) {
             coached.firstGrabWheel = true;
-            voice.speak('tomb', '现在，滚轮转动的是你手里的球。', { durationMs: 5000 });
+            voice.speak('tomb', '滚轮沿 W 轴移动。按住 Shift 拨滚轮，就能转动手里的球。', { durationMs: 5000 });
           }
         }
         return r;
